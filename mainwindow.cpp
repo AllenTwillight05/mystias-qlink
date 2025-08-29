@@ -1,0 +1,252 @@
+#include "mainwindow.h"
+#include "src/box.h"
+#include <QGraphicsPixmapItem>
+#include <QTimer>
+#include <cmath>
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , scene(nullptr)
+    , view(nullptr)
+    , character(nullptr)
+    , movementTimer(new QTimer(this))
+    , animationTimer(new QTimer(this))
+    , moveDirection(0, 0)
+    , isMoving(false)
+    , currentDirection(0)
+    , currentFrame(0)
+{
+    // 初始化按键状态
+    for(int i = 0; i < 4; i++) {
+        keys[i] = false;
+    }
+
+    setupScene();
+    loadCharacterSpriteSheet();
+
+    // 设置移动计时器 (30FPS)
+    connect(movementTimer, &QTimer::timeout, this, &MainWindow::updateMovement);
+    movementTimer->start(33); // 约30FPS
+
+    // 设置动画计时器 (5FPS)
+    connect(animationTimer, &QTimer::timeout, this, &MainWindow::updateAnimation);
+    animationTimer->start(200); // 0.2秒更新一次
+
+    setWindowTitle("Yukari Simple Map");
+    resize(900, 700);
+}
+
+MainWindow::~MainWindow()
+{
+}
+
+void MainWindow::setupScene()
+{
+    scene = new QGraphicsScene(this);
+    view = new QGraphicsView(scene);
+
+    // 设置场景大小
+    scene->setSceneRect(0, 0, mapWidth, mapHeight);
+    scene->setBackgroundBrush(Qt::gray);
+
+    // 加载背景图片
+    QPixmap bgPixmap(":/assets/background.jpg");
+    if (!bgPixmap.isNull()) {
+        QGraphicsPixmapItem *bgItem = scene->addPixmap(bgPixmap);
+        bgItem->setZValue(-1);
+    }
+
+    setCentralWidget(view);
+}
+
+void MainWindow::loadCharacterSpriteSheet()
+{
+    characterSpriteSheet.load(":/assets/sprites0.png");
+
+    character = new QGraphicsPixmapItem();
+    character->setPos(mapWidth/2, mapHeight/2);
+    character->setScale(1.5);
+    character->setOffset(-frameWidth/2, -frameHeight/2);
+
+    // 设置初始精灵图像
+    updateCharacterSprite();
+
+    scene->addItem(character);
+
+    // 初始化箱子
+    //box1 = new Box(":/assets/wellington.png", scene, character->pos());
+    box1 = new Box(":/assets/recipe.png", scene, character->pos());
+}
+
+void MainWindow::updateCharacterSprite()
+{
+    if (characterSpriteSheet.isNull()) return;
+
+    // 计算源矩形 (精灵图布局: 每行一个动画帧，每列一个方向)
+    QRect sourceRect(
+        currentDirection * frameWidth,  // x: 方向索引 * 帧宽度
+        currentFrame * frameHeight,     // y: 帧索引 * 帧高度
+        frameWidth,
+        frameHeight
+        );
+
+    QPixmap framePixmap = characterSpriteSheet.copy(sourceRect);
+    character->setPixmap(framePixmap);
+}
+
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    if (event->isAutoRepeat()) return; // 忽略重复按键！！！重要！！！
+
+    bool wasMoving = isMoving;
+
+    switch (event->key()) {
+    case Qt::Key_W:
+        keys[0] = true;
+        startMoving(3); // Up
+        break;
+    case Qt::Key_A:
+        keys[1] = true;
+        startMoving(1); // Left
+        break;
+    case Qt::Key_S:
+        keys[2] = true;
+        startMoving(0); // Down
+        break;
+    case Qt::Key_D:
+        keys[3] = true;
+        startMoving(2); // Right
+        break;
+    case Qt::Key_Q:
+        delete box1;
+        box1 = new Box(":/assets/recipe.png", scene, character->pos());
+        break;
+    default:
+        QMainWindow::keyPressEvent(event);
+        return;
+    }
+
+    // 如果从静止变为移动，立即切换到第一个行走帧（此时wasMoving初始为0，isMoving在switch中变1）
+    if (!wasMoving && isMoving) {
+        currentFrame = 1;
+        updateCharacterSprite();
+    }
+}
+
+void MainWindow::keyReleaseEvent(QKeyEvent *event)
+{
+    if (event->isAutoRepeat()) return;// 同keyPressEvent，忽略重复按键
+
+    switch (event->key()) {
+    case Qt::Key_W: keys[0] = false; break;
+    case Qt::Key_A: keys[1] = false; break;
+    case Qt::Key_S: keys[2] = false; break;
+    case Qt::Key_D: keys[3] = false; break;
+    default:
+        QMainWindow::keyReleaseEvent(event);
+        return;
+    }
+
+    // 检查是否还有按键被按下
+    bool anyKeyPressed = keys[0] || keys[1] || keys[2] || keys[3];
+
+    if (!anyKeyPressed) {
+        stopMoving();
+    } else {
+        // 更新移动方向（支持多键同时按下）
+        QPointF newDirection(0, 0);
+        if (keys[3]) newDirection.setX(1);  // D
+        if (keys[1]) newDirection.setX(-1); // A
+        if (keys[2]) newDirection.setY(1);  // S
+        if (keys[0]) newDirection.setY(-1); // W
+
+        moveDirection = newDirection;
+
+        // 更新朝向（优先级：上下 > 左右）
+        if (keys[0]) currentDirection = 3;      // Up
+        else if (keys[2]) currentDirection = 0; // Down
+        else if (keys[1]) currentDirection = 1; // Left
+        else if (keys[3]) currentDirection = 2; // Right
+    }
+}
+
+void MainWindow::startMoving(int direction)
+{
+    currentDirection = direction;
+    isMoving = true;
+
+    // 设置移动方向
+    switch (direction) {
+    case 0: moveDirection = QPointF(0, 1);  break; // Down
+    case 1: moveDirection = QPointF(-1, 0); break; // Left
+    case 2: moveDirection = QPointF(1, 0);  break; // Right
+    case 3: moveDirection = QPointF(0, -1); break; // Up
+    }
+}
+
+void MainWindow::stopMoving()
+{
+    isMoving = false;
+    moveDirection = QPointF(0, 0);
+    currentFrame = 0; // 回到静止帧
+    updateCharacterSprite();
+}
+
+void MainWindow::updateMovement()
+{
+    if (!isMoving) return;
+
+    QPointF newPos = character->pos() + moveDirection * moveSpeed;
+    QPointF del = box1->pos() - newPos;
+    QPointF distance(std::abs(del.x()),std::abs(del.y()));
+
+    // 边界处理（循环地图）
+    qreal x = std::fmod(newPos.x(), mapWidth);
+    qreal y = std::fmod(newPos.y(), mapHeight);
+    if (x < 0) x += mapWidth;
+    if (y < 0) y += mapHeight;
+    character->setPos(x, y);
+
+    if(del.y() > 0){
+        character->setZValue(0);
+    }else if(del.y() <= 0){
+        character->setZValue(2);
+    }
+    // box碰撞判断
+    if (distance.x() < box1->boxSize && distance.y() < box1->boxSize) {
+        box1->push(moveDirection,mapWidth,mapHeight);
+    }
+}
+
+void MainWindow::updateAnimation()
+{
+    if (!isMoving) return;
+
+    // 动画帧循环：1 -> 0 -> 2 -> 0 -> 1 -> 0 -> 2 -> ...
+    static bool nextIsTwo = false; // 静态变量记录下次是否应该是帧2
+
+    switch (currentFrame) {
+    case 0:
+        // 从0帧切换到1帧或2帧（交替）
+        if (nextIsTwo) {
+            currentFrame = 2;
+            nextIsTwo = false;
+        } else {
+            currentFrame = 1;
+            nextIsTwo = true;
+        }
+        break;
+    case 1:
+        currentFrame = 0;
+        break;
+    case 2:
+        currentFrame = 0;
+        break;
+    default:
+        currentFrame = 1;
+        nextIsTwo = true;
+        break;
+    }
+
+    updateCharacterSprite();
+}
