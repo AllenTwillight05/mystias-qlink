@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QPixmap>
 
+
 class Box;
 
 class MainWindow : public QMainWindow

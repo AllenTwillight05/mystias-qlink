@@ -1,27 +1,41 @@
 #pragma once
+#include <QVector>
+#include <QGraphicsScene>
+#include <QString>
+#include "box.h"
 
-#include <QWidget>
-
-#define MAX_MAP_SIZE 60
-
-class Map : public QWidget
-{
-    Q_OBJECT
-
+// Map 类：管理 m*n 的 Box 矩阵
+class Map {
 public:
-    Map(QWidget *parent = nullptr);
-    virtual ~Map();
+    // 构造函数
+    Map(int rows, int cols, int typeCount,
+        const QString &spriteSheetPath,
+        QGraphicsScene *scene, int frameSize = 26);
 
-protected:
-    void paintEvent(QPaintEvent *event) override;
-    void drawMap(QPainter *painter) const;
-    void randomColor();
-    void mapInit();
+    // 析构函数，清理内存
+    ~Map();
+
+    // 将地图添加到场景
+    void addToScene();
+
+    // 获取地图行列数
+    int rowCount() const { return m_rows; }
+    int colCount() const { return m_cols; }
+
 private:
-    int n=15, m=15; // 表示Map的大小，需要能够接收用户的输入动态配置
-    int boxNum=7;
-    int map[MAX_MAP_SIZE][MAX_MAP_SIZE];
-    int heigh = 20, wid = 20;
+    int m_rows;             // 行数
+    int m_cols;             // 列数
+    int m_typeCount;        // 可用的类型数量
+    int m_frameSize;        // 精灵图小块大小（正方形）
+    QString m_spriteSheetPath;
 
-    QColor *color;
+    QGraphicsScene *m_scene;
+    QVector<QVector<int>> m_map;      // 存储类型编号矩阵
+    QVector<Box*> m_boxes;            // 存储生成的 Box 实例
+
+    // 初始化随机地图
+    void initMap();
+
+    // 根据类型编号生成 QPixmap
+    QPixmap getSpriteByType(int typeId);
 };

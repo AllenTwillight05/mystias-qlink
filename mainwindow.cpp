@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "box.h"
+#include "map.h"
 #include <QGraphicsPixmapItem>
 #include <QTimer>
 #include <cmath>
@@ -69,8 +70,13 @@ void MainWindow::loadCharacterSpriteSheet()
     scene->addItem(character);
 
     // 初始化箱子
-    //box1 = new Box(":/assets/wellington.png", scene, character->pos());
     box1 = new Box(":/assets/recipe.png", scene, character->pos());
+
+    // 初始化地图 (例如 6x8, 随机选取 20 种类型, 每格32像素)
+    Map *gameMap = new Map(6, 8, 20, ":/assets/recipe.png", scene, 26);
+    gameMap->addToScene();
+
+
 }
 
 void MainWindow::updateCharacterSprite()

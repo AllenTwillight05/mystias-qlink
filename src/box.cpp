@@ -48,24 +48,3 @@ void Box::setupSprite(const QPixmap &imagePath, int frameSize){
     setOffset(-frameSize/2, -frameSize/2); // 中心对齐
 
 }
-
-// void Box::push(const QPointF &moveDirection,const qreal mapWidth, const qreal mapHeight)
-// {
-//     // 边界处理（循环地图）
-//     int flag=0;//box是否执行了循环地图边界处理
-//     QPointF currentPos = this->pos();
-//     QPointF newPos = currentPos + moveDirection * PUSH_SPEED;
-//     if(newPos.x() < 0 || newPos.x() > mapWidth || newPos.y() < 0 || newPos.y() >mapHeight)flag=1;
-//     qreal x = std::fmod(newPos.x(), mapWidth);
-//     qreal y = std::fmod(newPos.y(), mapHeight);
-//     if (x < 0) x += mapWidth;
-//     if (y < 0) y += mapHeight;
-//     setPos(x,y);
-//     if(flag)sidePush(moveDirection);
-// }
-
-// void Box::sidePush(const QPointF &moveDirection)
-// {
-//     QPointF newPos = this->pos() + moveDirection * boxSize;
-//     setPos(newPos);
-// }
