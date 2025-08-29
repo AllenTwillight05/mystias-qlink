@@ -1,5 +1,4 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
 
 #include <QMainWindow>
 #include <QGraphicsScene>
@@ -63,7 +62,6 @@ private:
     const qreal mapHeight = 600;
 
     // 按键状态
-    bool keys[4]; // W, A, S, D
+    //bool keys[4]; // W, A, S, D多按键控制
 };
 
-#endif // MAINWINDOW_H

@@ -30,10 +30,12 @@ CONFIG += c++17
 
 SOURCES += main.cpp \
            mainwindow.cpp \
-           src/box.cpp
+           src/box.cpp \
+           src/map.cpp
 
 HEADERS += mainwindow.h \
-           src/box.h
+           src/box.h \
+           src/map.h
 
 
 RESOURCES += resources/resources.qrc

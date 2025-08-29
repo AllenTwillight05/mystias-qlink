@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "src/box.h"
+#include "box.h"
 #include <QGraphicsPixmapItem>
 #include <QTimer>
 #include <cmath>
@@ -16,11 +16,6 @@ MainWindow::MainWindow(QWidget *parent)
     , currentDirection(0)
     , currentFrame(0)
 {
-    // 初始化按键状态
-    for(int i = 0; i < 4; i++) {
-        keys[i] = false;
-    }
-
     setupScene();
     loadCharacterSpriteSheet();
 
@@ -102,19 +97,15 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 
     switch (event->key()) {
     case Qt::Key_W:
-        keys[0] = true;
         startMoving(3); // Up
         break;
     case Qt::Key_A:
-        keys[1] = true;
         startMoving(1); // Left
         break;
     case Qt::Key_S:
-        keys[2] = true;
         startMoving(0); // Down
         break;
     case Qt::Key_D:
-        keys[3] = true;
         startMoving(2); // Right
         break;
     case Qt::Key_Q:
@@ -138,35 +129,13 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     if (event->isAutoRepeat()) return;// 同keyPressEvent，忽略重复按键
 
     switch (event->key()) {
-    case Qt::Key_W: keys[0] = false; break;
-    case Qt::Key_A: keys[1] = false; break;
-    case Qt::Key_S: keys[2] = false; break;
-    case Qt::Key_D: keys[3] = false; break;
+    case Qt::Key_W:
+    case Qt::Key_A:
+    case Qt::Key_S:
+    case Qt::Key_D:stopMoving();break;
     default:
         QMainWindow::keyReleaseEvent(event);
         return;
-    }
-
-    // 检查是否还有按键被按下
-    bool anyKeyPressed = keys[0] || keys[1] || keys[2] || keys[3];
-
-    if (!anyKeyPressed) {
-        stopMoving();
-    } else {
-        // 更新移动方向（支持多键同时按下）
-        QPointF newDirection(0, 0);
-        if (keys[3]) newDirection.setX(1);  // D
-        if (keys[1]) newDirection.setX(-1); // A
-        if (keys[2]) newDirection.setY(1);  // S
-        if (keys[0]) newDirection.setY(-1); // W
-
-        moveDirection = newDirection;
-
-        // 更新朝向（优先级：上下 > 左右）
-        if (keys[0]) currentDirection = 3;      // Up
-        else if (keys[2]) currentDirection = 0; // Down
-        else if (keys[1]) currentDirection = 1; // Left
-        else if (keys[3]) currentDirection = 2; // Right
     }
 }
 
@@ -200,6 +169,12 @@ void MainWindow::updateMovement()
     QPointF del = box1->pos() - newPos;
     QPointF distance(std::abs(del.x()),std::abs(del.y()));
 
+    // box碰撞判断
+    if (distance.x() < box1->boxSize && distance.y() < box1->boxSize) {
+        moveDirection = QPointF(0, 0);
+        newPos = character->pos();
+    }
+
     // 边界处理（循环地图）
     qreal x = std::fmod(newPos.x(), mapWidth);
     qreal y = std::fmod(newPos.y(), mapHeight);
@@ -212,10 +187,7 @@ void MainWindow::updateMovement()
     }else if(del.y() <= 0){
         character->setZValue(2);
     }
-    // box碰撞判断
-    if (distance.x() < box1->boxSize && distance.y() < box1->boxSize) {
-        box1->push(moveDirection,mapWidth,mapHeight);
-    }
+
 }
 
 void MainWindow::updateAnimation()
