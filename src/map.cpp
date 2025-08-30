@@ -24,23 +24,28 @@ Map::~Map()
             delete b;
         }
     }
+    delete[] disOrder;
 }
 
 void Map::initMap()
 {
+    disOrder = new int[m_typeCount];
+    for(int i = 0; i < m_typeCount; ++i){
+        disOrder[i] = QRandomGenerator::global()->bounded(164);
+    }
     m_map.resize(m_rows);
     for (int i = 0; i < m_rows; i++) {
         m_map[i].resize(m_cols);
         for (int j = 0; j < m_cols; j++) {
             // 随机分配一个类型 [0, m_typeCount-1]
-            m_map[i][j] = QRandomGenerator::global()->bounded(m_typeCount);
+            m_map[i][j] = disOrder[QRandomGenerator::global()->bounded(m_typeCount)];
         }
     }
 }
 
 QPixmap Map::getSpriteByType(int typeId)
 {
-    QPixmap spriteSheet(m_spriteSheetPath);
+    QPixmap spriteSheet(m_spriteSheetPath); //加载精灵图
     if (spriteSheet.isNull()) {
         qWarning() << "Failed to load sprite sheet:" << m_spriteSheetPath;
         return QPixmap();
@@ -81,7 +86,7 @@ void Map::addToScene()
 
             Box *box = new Box(pos, m_spriteSheetPath, m_scene);
             box->setPixmap(sprite);
-            box->setZValue(1); // 用 y 值做层级
+            box->setZValue(1);
             m_boxes.append(box);
         }
     }

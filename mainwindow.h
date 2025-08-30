@@ -61,6 +61,7 @@ private:
     // 地图相关
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
+    int yNum = 6, xNum = 8, typeNum = 9;
 
     // 按键状态
     //bool keys[4]; // W, A, S, D多按键控制

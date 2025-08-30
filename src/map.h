@@ -30,7 +30,8 @@ private:
     QString m_spriteSheetPath;
 
     QGraphicsScene *m_scene;
-    QVector<QVector<int>> m_map;      // 存储类型编号矩阵
+    QVector<QVector<int>> m_map;      // 存储类型编号矩阵（二维数组）
+    int *disOrder;
     QVector<Box*> m_boxes;            // 存储生成的 Box 实例
 
     // 初始化随机地图
