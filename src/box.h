@@ -13,10 +13,12 @@ public:
     int boxType = 0;//0空，1-164为类型
     bool boxCond = 0;//0未激活，1激活
     void activate();
-    bool preAct();
+    void preAct();
+    void npreAct();
 private:
     void setupSprite(const QPixmap &imagePath, int frameSize = 26);//帧大小
     QPointF generateRandomPosition(const QRectF &sceneRect,const QPointF &characterPos);//随机位置辅助构造函数
+    QGraphicsRectItem* m_overlay = nullptr;  // 成员变量存储遮罩，用于预选中效果
 };
 
 

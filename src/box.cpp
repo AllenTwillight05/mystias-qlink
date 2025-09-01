@@ -9,6 +9,13 @@ Box::Box(const QPointF &pos, const QString &imagePath, QGraphicsScene *scene)
     setupSprite(imagePath);
     setOffset(-pixmap().width()/2, -pixmap().height()/2); // 中心对齐
     setPos(pos);
+
+    // 在构造函数中添加（需要#include <QGraphicsEllipseItem>）
+    QGraphicsEllipseItem* debugMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this); // 创建小圆点
+    debugMarker->setBrush(Qt::green); // 设置为红色
+    debugMarker->setZValue(100);
+    debugMarker->setPos(0, 0); // 相对于父项的位置（中心点）
+
     this->setScale(1.5);
     this->setZValue(1);
     scene->addItem(this);
@@ -50,13 +57,38 @@ void Box::setupSprite(const QPixmap &imagePath, int frameSize){
 
 }
 
-bool Box::preAct(){
-    this->setScale(2);
-    return 0;
+void Box::preAct() {
+    // 如果已有遮罩则先删除
+    if (m_overlay) delete m_overlay;
+    // 创建新遮罩
+    m_overlay = new QGraphicsRectItem(this->boundingRect(), this);
+    m_overlay->setBrush(QColor(0, 0, 0, 120));  // 调整颜色和透明度
+    m_overlay->setPen(Qt::NoPen);  // 去掉边框
+    m_overlay->setZValue(-1);
 }
+
+void Box::npreAct() {
+    if (m_overlay) {
+        // 保险起见先从父子关系里摘掉（不是必须，但能少点脏区关联）
+        m_overlay->setParentItem(nullptr);
+        delete m_overlay;
+        m_overlay = nullptr;
+
+        // 关键：无效化 + 重绘
+        if (auto eff = graphicsEffect()) {      // 若有发光效果，先让它重新抓取源图
+            eff->setEnabled(false);
+            eff->setEnabled(true);
+        }
+        update();                                // 申请重绘当前 Item
+        if (scene())                             // 再保险一点：让场景也重绘此区域
+            scene()->invalidate(sceneBoundingRect(), QGraphicsScene::AllLayers);
+    }
+}
+
 
 void Box::activate(){
     boxCond = 1;
+    this->setScale(2);
     auto* glow = new QGraphicsDropShadowEffect;
     glow->setColor(Qt::yellow);    // 金色发光
     glow->setBlurRadius(20);        // 光晕大小

@@ -11,7 +11,7 @@ bool Collision::checkPointCollision(const QPointF& point, const QGraphicsItem* i
 {
     QPointF del = item->pos() - point;
     QPointF distance(std::abs(del.x()), std::abs(del.y()));
-    return (distance.x() < boxSize && distance.y() < boxSize);
+    return (distance.x() < boxSize/2 && distance.y() < boxSize/2);
 }
 
 bool Collision::willCollide(const QPointF& currentPos, const QPointF& moveDirection,
@@ -24,4 +24,9 @@ bool Collision::willCollide(const QPointF& currentPos, const QPointF& moveDirect
 QPointF Collision::getDistance(const QPointF& pos1, const QPointF& pos2)
 {
     return pos2 - pos1;
+}
+
+qreal Collision::EuclidDistance(const QPointF& pos1, const QPointF& pos2){
+    QPointF dis = getDistance(pos1, pos2);
+    return (sqrt(dis.x() * dis.x() + dis.y() * dis.y()));
 }

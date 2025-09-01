@@ -44,6 +44,8 @@ private:
     Box* box1;
     QPixmap characterSpriteSheet;
 
+    QGraphicsEllipseItem* m_roleMarker; // 角色坐标标记
+
     // 计时器
     QTimer *movementTimer;  // 移动计时器 (30FPS)
     QTimer *animationTimer; // 动画计时器 (5FPS)

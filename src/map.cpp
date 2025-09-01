@@ -77,14 +77,16 @@ void Map::addToScene()
 
     for (int i = 0; i < m_rows; i++) {
         for (int j = 0; j < m_cols; j++) {
-            // 直接计算中心点坐标（无需补偿）
-            QPointF centerPos(
-                offsetX + j * spacing,
-                offsetY + i * spacing
-                );
+            int typeId = m_map[i][j];
+            QPixmap sprite = getSpriteByType(typeId);
+            if (sprite.isNull()) continue;
 
-            Box *box = new Box(centerPos, m_spriteSheetPath, m_scene);
-            box->setPixmap(getSpriteByType(m_map[i][j]));
+            QPointF pos(offsetX + j * spacing,
+                        offsetY + i * spacing);
+
+            Box *box = new Box(pos, m_spriteSheetPath, m_scene);
+            box->setPixmap(sprite);
+            box->setZValue(1);
             m_boxes.append(box);
         }
     }

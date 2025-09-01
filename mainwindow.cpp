@@ -51,7 +51,7 @@ void MainWindow::setupScene()
     QPixmap bgPixmap(":/assets/background.jpg");
     if (!bgPixmap.isNull()) {
         QGraphicsPixmapItem *bgItem = scene->addPixmap(bgPixmap);
-        bgItem->setZValue(-1);
+        bgItem->setZValue(-100);
     }
 
     setCentralWidget(view);
@@ -63,13 +63,19 @@ void MainWindow::loadCharacterSpriteSheet()
 
     character = new QGraphicsPixmapItem();
     character->setPos(mapWidth/5, mapHeight/5);
-    character->setScale(0.5);
+    //character->setScale(1.5);
     character->setOffset(-frameWidth/2, -frameHeight/2);
 
     // 设置初始精灵图像
     updateCharacterSprite();
 
     scene->addItem(character);
+
+    // 初始化标记（在构造函数或初始化函数中）
+    m_roleMarker = new QGraphicsEllipseItem(-3, -3, 6, 6); // 小圆点
+    m_roleMarker->setBrush(Qt::green);
+    m_roleMarker->setZValue(100);
+    scene->addItem(m_roleMarker); // 添加到场景
 
     // 初始化箱子
     //box1 = new Box(":/assets/recipe.png", scene, character->pos());
@@ -175,32 +181,52 @@ void MainWindow::updateMovement()
 
     QPointF newPos = character->pos() + moveDirection * moveSpeed;
     bool willCollide = false;
+    m_roleMarker->setPos(newPos);
 
-    // 遍历所有Box进行碰撞检测
+    Box* nearestBox = nullptr;
+    qreal nearestDist = std::numeric_limits<qreal>::max();
+
+    // 遍历所有Box
     for (Box* box : gameMap->m_boxes) {
+        // 碰撞检测
         if (Collision::willCollide(character->pos(), moveDirection, moveSpeed, box, box->boxSize)) {
             willCollide = true;
             box->activate();
-            break; // 检测到碰撞立即退出循环
+            break;
+        }
+
+        // Z值调整
+        QPointF del = Collision::getDistance(character->pos(), box->pos());
+        character->setZValue(del.y() > 0 ? 0 : 2);
+
+        // 距离检测，找最近的
+        qreal dist = Collision::EuclidDistance(del);
+        if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestBox = box;
         }
     }
 
-    if (willCollide) {
-        moveDirection = QPointF(0, 0);
-        newPos = character->pos(); // 保持原位
+    // 只让最近的 Box 进入预选中（阈值控制）
+    for (Box* box : gameMap->m_boxes) {
+        if (box == nearestBox && nearestDist < frameWidth * 0.75)box->preAct();
+        else box->npreAct();
     }
 
-    // 边界处理（循环地图）
+    // 如果发生碰撞，停住
+    if (willCollide) {
+        moveDirection = QPointF(0, 0);
+        newPos = character->pos();
+    }
+
+    // 边界循环
     qreal x = std::fmod(newPos.x(), mapWidth);
     qreal y = std::fmod(newPos.y(), mapHeight);
     if (x < 0) x += mapWidth;
     if (y < 0) y += mapHeight;
     character->setPos(x, y);
-
-    // Z值调整（保持原逻辑，仅针对box1）
-    // QPointF del = Collision::getDistance(character->pos(), box1->pos());
-    // character->setZValue(del.y() > 0 ? 0 : 2); // 简化条件
 }
+
 
 void MainWindow::updateAnimation()
 {
