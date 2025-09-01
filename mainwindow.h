@@ -11,6 +11,7 @@
 
 
 class Box;
+class Map;
 
 class MainWindow : public QMainWindow
 {
@@ -62,6 +63,7 @@ private:
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
     int yNum = 6, xNum = 8, typeNum = 9;
+    Map* gameMap;  // 持有Map实例指针
 
     // 按键状态
     //bool keys[4]; // W, A, S, D多按键控制

@@ -2,6 +2,7 @@
 #include <QPixmap>
 #include <QGraphicsScene>
 #include <QRandomGenerator>
+#include <QGraphicsDropShadowEffect>
 
 Box::Box(const QPointF &pos, const QString &imagePath, QGraphicsScene *scene)
 {
@@ -47,4 +48,18 @@ void Box::setupSprite(const QPixmap &imagePath, int frameSize){
     setPixmap(imagePath.copy(sourceRect));
     setOffset(-frameSize/2, -frameSize/2); // 中心对齐
 
+}
+
+bool Box::preAct(){
+    this->setScale(2);
+    return 0;
+}
+
+void Box::activate(){
+    boxCond = 1;
+    auto* glow = new QGraphicsDropShadowEffect;
+    glow->setColor(Qt::yellow);    // 金色发光
+    glow->setBlurRadius(20);        // 光晕大小
+    glow->setOffset(0);             // 居中发光
+    this->setGraphicsEffect(glow);  // 应用特效
 }

@@ -21,6 +21,7 @@ public:
     // 获取地图行列数
     int rowCount() const { return m_rows; }
     int colCount() const { return m_cols; }
+    QVector<Box*> m_boxes;            // 存储生成的 Box 实例
 
 private:
     int m_rows;             // 行数
@@ -32,7 +33,6 @@ private:
     QGraphicsScene *m_scene;
     QVector<QVector<int>> m_map;      // 存储类型编号矩阵（二维数组）
     int *disOrder;
-    QVector<Box*> m_boxes;            // 存储生成的 Box 实例
 
     // 初始化随机地图
     void initMap();

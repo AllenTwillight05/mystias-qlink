@@ -1,12 +1,14 @@
 #include "mainwindow.h"
 #include "box.h"
 #include "map.h"
+#include "collision.h"
 #include <QGraphicsPixmapItem>
 #include <QTimer>
 #include <cmath>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
+
     , scene(nullptr)
     , view(nullptr)
     , character(nullptr)
@@ -60,8 +62,8 @@ void MainWindow::loadCharacterSpriteSheet()
     characterSpriteSheet.load(":/assets/sprites0.png");
 
     character = new QGraphicsPixmapItem();
-    character->setPos(mapWidth/2, mapHeight/2);
-    character->setScale(1.5);
+    character->setPos(mapWidth/5, mapHeight/5);
+    character->setScale(0.5);
     character->setOffset(-frameWidth/2, -frameHeight/2);
 
     // 设置初始精灵图像
@@ -70,10 +72,10 @@ void MainWindow::loadCharacterSpriteSheet()
     scene->addItem(character);
 
     // 初始化箱子
-    box1 = new Box(":/assets/recipe.png", scene, character->pos());
+    //box1 = new Box(":/assets/recipe.png", scene, character->pos());
 
     // 初始化地图
-    Map *gameMap = new Map(yNum, xNum, typeNum, ":/assets/recipe.png", scene, 26);
+    gameMap = new Map(yNum, xNum, typeNum, ":/assets/recipe.png", scene, 26);
     gameMap->addToScene();
 
 
@@ -115,8 +117,8 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         startMoving(2); // Right
         break;
     case Qt::Key_Q:
-        delete box1;
-        box1 = new Box(":/assets/recipe.png", scene, character->pos());
+        //delete box1;
+        //box1 = new Box(":/assets/recipe.png", scene, character->pos());
         break;
     default:
         QMainWindow::keyPressEvent(event);
@@ -172,13 +174,20 @@ void MainWindow::updateMovement()
     if (!isMoving) return;
 
     QPointF newPos = character->pos() + moveDirection * moveSpeed;
-    QPointF del = box1->pos() - newPos;
-    QPointF distance(std::abs(del.x()),std::abs(del.y()));
+    bool willCollide = false;
 
-    // box碰撞判断
-    if (distance.x() < box1->boxSize && distance.y() < box1->boxSize) {
+    // 遍历所有Box进行碰撞检测
+    for (Box* box : gameMap->m_boxes) {
+        if (Collision::willCollide(character->pos(), moveDirection, moveSpeed, box, box->boxSize)) {
+            willCollide = true;
+            box->activate();
+            break; // 检测到碰撞立即退出循环
+        }
+    }
+
+    if (willCollide) {
         moveDirection = QPointF(0, 0);
-        newPos = character->pos();
+        newPos = character->pos(); // 保持原位
     }
 
     // 边界处理（循环地图）
@@ -188,12 +197,9 @@ void MainWindow::updateMovement()
     if (y < 0) y += mapHeight;
     character->setPos(x, y);
 
-    if(del.y() > 0){
-        character->setZValue(0);
-    }else if(del.y() <= 0){
-        character->setZValue(2);
-    }
-
+    // Z值调整（保持原逻辑，仅针对box1）
+    // QPointF del = Collision::getDistance(character->pos(), box1->pos());
+    // character->setZValue(del.y() > 0 ? 0 : 2); // 简化条件
 }
 
 void MainWindow::updateAnimation()
