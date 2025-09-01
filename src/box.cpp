@@ -10,11 +10,11 @@ Box::Box(const QPointF &pos, const QString &imagePath, QGraphicsScene *scene)
     setOffset(-pixmap().width()/2, -pixmap().height()/2); // 中心对齐
     setPos(pos);
 
-    // 在构造函数中添加（需要#include <QGraphicsEllipseItem>）
-    QGraphicsEllipseItem* debugMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this); // 创建小圆点
-    debugMarker->setBrush(Qt::green); // 设置为红色
-    debugMarker->setZValue(100);
-    debugMarker->setPos(0, 0); // 相对于父项的位置（中心点）
+    // // 在构造函数中添加（需要#include <QGraphicsEllipseItem>）
+    // QGraphicsEllipseItem* debugMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this); // 创建坐标小圆点
+    // debugMarker->setBrush(Qt::green); // 设置为绿色
+    // debugMarker->setZValue(100);
+    // debugMarker->setPos(0, 0); // 相对于父项的位置（中心点）
 
     this->setScale(1.5);
     this->setZValue(1);
@@ -65,6 +65,8 @@ void Box::preAct() {
     m_overlay->setBrush(QColor(0, 0, 0, 120));  // 调整颜色和透明度
     m_overlay->setPen(Qt::NoPen);  // 去掉边框
     m_overlay->setZValue(-1);
+    m_overlay->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+
 }
 
 void Box::npreAct() {

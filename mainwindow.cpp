@@ -72,10 +72,10 @@ void MainWindow::loadCharacterSpriteSheet()
     scene->addItem(character);
 
     // 初始化标记（在构造函数或初始化函数中）
-    m_roleMarker = new QGraphicsEllipseItem(-3, -3, 6, 6); // 小圆点
-    m_roleMarker->setBrush(Qt::green);
-    m_roleMarker->setZValue(100);
-    scene->addItem(m_roleMarker); // 添加到场景
+    // m_roleMarker = new QGraphicsEllipseItem(-3, -3, 6, 6); // 坐标小圆点
+    // m_roleMarker->setBrush(Qt::green);
+    // m_roleMarker->setZValue(100);
+    // scene->addItem(m_roleMarker); // 添加到场景
 
     // 初始化箱子
     //box1 = new Box(":/assets/recipe.png", scene, character->pos());
@@ -181,7 +181,7 @@ void MainWindow::updateMovement()
 
     QPointF newPos = character->pos() + moveDirection * moveSpeed;
     bool willCollide = false;
-    m_roleMarker->setPos(newPos);
+    //m_roleMarker->setPos(newPos);//坐标小圆点
 
     Box* nearestBox = nullptr;
     qreal nearestDist = std::numeric_limits<qreal>::max();
