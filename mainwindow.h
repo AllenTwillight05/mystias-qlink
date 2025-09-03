@@ -64,8 +64,12 @@ private:
     // 地图相关
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
-    int yNum = 6, xNum = 8, typeNum = 9;
+    int yNum = 6, xNum = 8, typeNum = 6;
     Map* gameMap;  // 持有Map实例指针
+
+    // 消除相关
+    Box* lastActivatedBox = nullptr;
+    void handleActivation(Box* box);
 
     // 按键状态
     //bool keys[4]; // W, A, S, D多按键控制

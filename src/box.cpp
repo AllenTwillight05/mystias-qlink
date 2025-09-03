@@ -89,11 +89,15 @@ void Box::npreAct() {
 
 
 void Box::activate(){
-    boxCond = 1;
     this->setScale(2);
     auto* glow = new QGraphicsDropShadowEffect;
     glow->setColor(Qt::yellow);    // 金色发光
     glow->setBlurRadius(20);        // 光晕大小
     glow->setOffset(0);             // 居中发光
     this->setGraphicsEffect(glow);  // 应用特效
+}
+void Box::deactivate(){
+    this->setScale(1.5);
+    // 移除发光效果
+    this->setGraphicsEffect(nullptr);
 }

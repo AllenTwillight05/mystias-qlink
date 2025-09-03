@@ -31,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     animationTimer->start(200); // 0.2秒更新一次
 
     setWindowTitle("Yukari Simple Map");
-    resize(900, 700);
+    resize(1600, 900);
 }
 
 MainWindow::~MainWindow()
@@ -45,7 +45,7 @@ void MainWindow::setupScene()
 
     // 设置场景大小
     scene->setSceneRect(0, 0, mapWidth, mapHeight);
-    scene->setBackgroundBrush(Qt::gray);
+    scene->setBackgroundBrush(Qt::darkGray);
 
     // 加载背景图片
     QPixmap bgPixmap(":/assets/background.jpg");
@@ -54,6 +54,7 @@ void MainWindow::setupScene()
         bgItem->setZValue(-100);
     }
 
+    view->scale(2.0, 2.0); // 等比例放大场景
     setCentralWidget(view);
 }
 
@@ -191,7 +192,7 @@ void MainWindow::updateMovement()
         // 碰撞检测
         if (Collision::willCollide(character->pos(), moveDirection, moveSpeed, box, box->boxSize)) {
             willCollide = true;
-            box->activate();
+            handleActivation(box);   // 单独函数处理激活/消除逻辑
             break;
         }
 
@@ -260,3 +261,41 @@ void MainWindow::updateAnimation()
 
     updateCharacterSprite();
 }
+
+void MainWindow::handleActivation(Box* box) {
+    if (!box) return;
+
+    // 如果还没有激活过任何方块
+    if (!lastActivatedBox) {
+        lastActivatedBox = box;
+        box->activate();
+        return;
+    }
+
+    // 如果点击到同一个方块，忽略
+    if (box == lastActivatedBox) return;
+
+    // 判定是否能消除
+    if (gameMap->canConnect(lastActivatedBox, box)) {
+        // 消除逻辑
+        lastActivatedBox->deactivate();
+        box->deactivate();
+        gameMap->m_map[lastActivatedBox->row][lastActivatedBox->col] = -1;
+        gameMap->m_map[box->row][box->col] = -1;
+        // 从 scene 删除
+        gameMap->getScene()->removeItem(lastActivatedBox);
+        gameMap->getScene()->removeItem(box);
+
+        // **从 m_boxes 删除**
+        gameMap->m_boxes.removeOne(lastActivatedBox);
+        gameMap->m_boxes.removeOne(box);
+
+        lastActivatedBox = nullptr; //清空状态
+    } else {
+        // 不满足条件，重置上一个，激活当前的
+        lastActivatedBox->deactivate();
+        lastActivatedBox = box;
+        box->activate();
+    }
+}
+

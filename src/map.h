@@ -21,7 +21,13 @@ public:
     // 获取地图行列数
     int rowCount() const { return m_rows; }
     int colCount() const { return m_cols; }
+    QGraphicsScene* getScene() const { return m_scene; }    //返回m_scene
+
     QVector<Box*> m_boxes;            // 存储生成的 Box 实例
+    QVector<QVector<int>> m_map;      // 存储类型编号矩阵（二维数组）
+    QGraphicsScene *m_scene;    //map场景
+
+    bool canConnect(Box* a, Box* b);    //判定逻辑
 
 private:
     int m_rows;             // 行数
@@ -30,8 +36,6 @@ private:
     int m_frameSize;        // 精灵图小块大小（正方形）
     QString m_spriteSheetPath;
 
-    QGraphicsScene *m_scene;
-    QVector<QVector<int>> m_map;      // 存储类型编号矩阵（二维数组）
     int *disOrder;
 
     // 初始化随机地图

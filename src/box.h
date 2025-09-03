@@ -11,8 +11,11 @@ public:
     explicit Box(const QString &imagePath, QGraphicsScene *scene, const QPointF& characterPos);
     const qreal boxSize = 45;//用于碰撞检测的距离
     int boxType = 0;//0空，1-164为类型
-    bool boxCond = 0;//0未激活，1激活
+    int row;
+    int col;
+
     void activate();
+    void deactivate();
     void preAct();
     void npreAct();
 private:
