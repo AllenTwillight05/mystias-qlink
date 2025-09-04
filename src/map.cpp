@@ -61,7 +61,7 @@ QPixmap Map::getSpriteByType(int typeId)
 
 void Map::addToScene()
 {
-    const int spacing = m_frameSize + 20; // 格子间隔
+    const int spacing = m_frameSize + 15; // 格子间隔
 
     // 整个地图像素宽高
     int totalWidth  = (m_cols - 1) * spacing;

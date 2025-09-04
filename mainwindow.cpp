@@ -54,7 +54,7 @@ void MainWindow::setupScene()
         bgItem->setZValue(-100);
     }
 
-    view->scale(2.0, 2.0); // 等比例放大场景
+    //view->scale(2.0, 2.0); // 等比例放大场景
     setCentralWidget(view);
 }
 
