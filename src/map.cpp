@@ -167,7 +167,7 @@ bool Map::canConnect(Box* a, Box* b) {
     int rows = m_rows;
     int cols = m_cols;
 
-    // 构造 padding 后的 grid
+    // 构造 padding 后的 grid矩阵（二维数组）
     QVector<QVector<int>> grid(rows + 2, QVector<int>(cols + 2, -1));   //初始化语法：grid(元素个数,元素值）
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -179,7 +179,7 @@ bool Map::canConnect(Box* a, Box* b) {
     int r1 = a->row + 1, c1 = a->col + 1;
     int r2 = b->row + 1, c2 = b->col + 1;
 
-    // 起点终点设为空，避免自己挡路
+    // ！！由于判断时包含起始点所以起点终点box设为空，避免自己挡路
     grid[r1][c1] = -1;
     grid[r2][c2] = -1;
 
@@ -192,3 +192,4 @@ bool Map::canConnect(Box* a, Box* b) {
 
     return false;
 }
+

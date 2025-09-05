@@ -29,6 +29,7 @@ public:
 
     bool canConnect(Box* a, Box* b);    //判定逻辑
 
+
 private:
     int m_rows;             // 行数
     int m_cols;             // 列数
