@@ -70,6 +70,7 @@ private:
     // 消除相关
     Box* lastActivatedBox = nullptr;
     void handleActivation(Box* box);
+    QGraphicsPathItem* currentPathItem = nullptr;
 
     // 按键状态
     //bool keys[4]; // W, A, S, D多按键控制

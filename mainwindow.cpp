@@ -282,16 +282,36 @@ void MainWindow::handleActivation(Box* box) {
         box->deactivate();
         gameMap->m_map[lastActivatedBox->row][lastActivatedBox->col] = -1;
         gameMap->m_map[box->row][box->col] = -1;
-        // 从 scene 删除
         gameMap->getScene()->removeItem(lastActivatedBox);
         gameMap->getScene()->removeItem(box);
-
-        // **从 m_boxes 删除**
         gameMap->m_boxes.removeOne(lastActivatedBox);
         gameMap->m_boxes.removeOne(box);
+        lastActivatedBox = nullptr;
 
-        lastActivatedBox = nullptr; //清空状态
-    } else {
+        // ===== 绘制路径 =====
+        const QVector<QPointF>& pts = gameMap->m_pathPixels;
+        if (pts.size() >= 2) {
+            QPainterPath path(pts[0]);
+            for (int i = 1; i < pts.size(); ++i) {
+                path.lineTo(pts[i]);  // 每一个拐点都画出来
+            }
+            // QPen pen(Qt::yellow, 10);
+            QPen pen(QColor(255, 223, 128), 10);
+            pen.setJoinStyle(Qt::RoundJoin);   // 拐角圆角
+            pen.setCapStyle(Qt::RoundCap);     // 线段端点圆头
+
+            QGraphicsPathItem* lineItem =
+                gameMap->getScene()->addPath(path, pen);
+            lineItem->setZValue(0); // 在底层，避免遮住角色
+
+            // 延时删除折线（比如 1 秒后）
+            QTimer::singleShot(500, [scene = gameMap->getScene(), lineItem]() {
+                scene->removeItem(lineItem);
+                delete lineItem;
+            });
+        }
+    }
+     else {
         // 不满足条件，重置上一个，激活当前的
         lastActivatedBox->deactivate();
         lastActivatedBox = box;
