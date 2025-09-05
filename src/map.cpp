@@ -1,5 +1,4 @@
 #include "map.h"
-#include "path.h"
 #include <QPixmap>
 #include <QRandomGenerator>
 #include <QDebug>
