@@ -5,14 +5,18 @@
 
 Map::Map(int rows, int cols, int typeCount,
          const QString &spriteSheetPath,
-         QGraphicsScene *scene, int frameSize)
-    : m_rows(rows), m_cols(cols),
+         QGraphicsScene *scene, int frameSize):// 按照成员变量在类里的声明顺序初始化：
+    m_boxes(),
+    m_map(),
+    m_scene(scene),
+    m_rows(rows),
+    m_cols(cols),
     m_typeCount(typeCount),
     m_frameSize(frameSize),
     m_spriteSheetPath(spriteSheetPath),
-    m_scene(scene)
+    disOrder(nullptr)
 {
-    initMap(); // 随机生成地图矩阵
+    initMap();
 }
 
 Map::~Map()
@@ -71,7 +75,7 @@ void Map::addToScene()
     QRectF sceneRect = m_scene->sceneRect();
     QPointF sceneCenter = sceneRect.center();
 
-    // 偏移量 = 场景中心 - 一半地图尺寸
+    // 偏移量 = 场景中心 - 一半地图尺寸, offset坐标对应的位置应该是最左上角方块的左上角
     qreal offsetX = sceneCenter.x() - totalWidth  / 2.0;
     qreal offsetY = sceneCenter.y() - totalHeight / 2.0;
 

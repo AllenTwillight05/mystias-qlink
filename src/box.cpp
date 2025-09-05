@@ -10,11 +10,11 @@ Box::Box(const QPointF &pos, const QString &imagePath, QGraphicsScene *scene)
     setOffset(-pixmap().width()/2, -pixmap().height()/2); // 中心对齐
     setPos(pos);
 
-    // // 在构造函数中添加（需要#include <QGraphicsEllipseItem>）
-    // QGraphicsEllipseItem* debugMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this); // 创建坐标小圆点
-    // debugMarker->setBrush(Qt::green); // 设置为绿色
-    // debugMarker->setZValue(100);
-    // debugMarker->setPos(0, 0); // 相对于父项的位置（中心点）
+    // 在构造函数中添加（需要#include <QGraphicsEllipseItem>）
+    QGraphicsEllipseItem* debugMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this); // 创建坐标小圆点
+    debugMarker->setBrush(Qt::green); // 设置为绿色
+    debugMarker->setZValue(100);
+    debugMarker->setPos(0, 0); // 相对于父项的位置（中心点）
 
     this->setScale(1.5);
     this->setZValue(1);
@@ -53,7 +53,7 @@ void Box::setupSprite(const QPixmap &imagePath, int frameSize){
     QRect sourceRect(col * frameSize, row * frameSize, frameSize, frameSize);
 
     setPixmap(imagePath.copy(sourceRect));
-    setOffset(-frameSize/2, -frameSize/2); // 中心对齐
+    setOffset(-frameSize/2, -frameSize/2); // 中心对齐（构造函数中已经实现，可选择性删去）
 
 }
 

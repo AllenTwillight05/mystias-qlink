@@ -31,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     animationTimer->start(200); // 0.2秒更新一次
 
     setWindowTitle("Yukari Simple Map");
-    resize(1600, 900);
+    resize(800, 450);
 }
 
 MainWindow::~MainWindow()
