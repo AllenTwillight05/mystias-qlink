@@ -33,7 +33,7 @@ public:
     QVector<QVector<int>> m_map;      // 存储类型编号矩阵（二维数组）
     QGraphicsScene *m_scene;          // map 场景
 
-    // 存储最近一次判定成功的路径（网格/像素）
+    // 存储最近一次判定成功的路径（节点坐标）（网格/像素）
     QVector<QPoint>  m_pathCells;
     QVector<QPointF> m_pathPixels;
 

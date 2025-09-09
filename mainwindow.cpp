@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     loadCharacterSpriteSheet();
 
     // 设置移动计时器 (30FPS)
-    connect(movementTimer, &QTimer::timeout, this, &MainWindow::updateMovement);
+    connect(movementTimer, &QTimer::timeout, this, &MainWindow::updateMovement);    //*sender, &signal, *receiver, &method
     movementTimer->start(33); // 约30FPS
 
     // 设置动画计时器 (5FPS)
@@ -289,7 +289,7 @@ void MainWindow::handleActivation(Box* box) {
         lastActivatedBox = nullptr;
 
         // ===== 绘制路径 =====
-        const QVector<QPointF>& pts = gameMap->m_pathPixels;
+        const QVector<QPointF>& pts = gameMap->m_pathPixels;    //节点像素坐标数组拷贝
         if (pts.size() >= 2) {
             QPainterPath path(pts[0]);
             for (int i = 1; i < pts.size(); ++i) {
@@ -304,8 +304,8 @@ void MainWindow::handleActivation(Box* box) {
                 gameMap->getScene()->addPath(path, pen);
             lineItem->setZValue(0); // 在底层，避免遮住角色
 
-            // 延时删除折线（比如 1 秒后）
-            QTimer::singleShot(500, [scene = gameMap->getScene(), lineItem]() {
+            // 延时删除折线
+            QTimer::singleShot(500, [scene = gameMap->getScene(), lineItem]() { //Lambda表达式（匿名函数），[capture_list传入参数](parameters函数参数) -> return_type {函数体}
                 scene->removeItem(lineItem);
                 delete lineItem;
             });
