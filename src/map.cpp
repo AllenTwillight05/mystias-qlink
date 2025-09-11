@@ -128,7 +128,7 @@ void Map::addToScene()
 
 bool Map::straightConnect(int r1, int c1, int r2, int c2,
                           const QVector<QVector<int>>& grid,
-                          QVector<QPoint>& outPath)
+                          QVector<QPoint>& outPath) const
 {
     if (r1 == r2) {
         for (int c = std::min(c1, c2) + 1; c < std::max(c1, c2); ++c)
@@ -147,7 +147,7 @@ bool Map::straightConnect(int r1, int c1, int r2, int c2,
 
 bool Map::oneTurnConnect(int r1, int c1, int r2, int c2,
                          const QVector<QVector<int>>& grid,
-                         QVector<QPoint>& outPath)
+                         QVector<QPoint>& outPath) const
 {
     // 拐点1 (r1, c2)
     if (grid[r1][c2] == -1) {
@@ -173,7 +173,7 @@ bool Map::oneTurnConnect(int r1, int c1, int r2, int c2,
 bool Map::twoTurnConnect(int r1, int c1, int r2, int c2,
                          const QVector<QVector<int>>& grid,
                          int rows, int cols,
-                         QVector<QPoint>& outPath)
+                         QVector<QPoint>& outPath) const
 {
     // 从起点沿四个方向延伸
     for (int c = c1 - 1; c >= 0; --c) { //向左
@@ -245,3 +245,41 @@ bool Map::canConnect(Box* a, Box* b)
 
     return false;
 }
+
+
+// 直接遍历 m_boxes，按 type 聚合 Box*存储在红黑树typeGroups中，然后两两调用 canConnect
+bool Map::isSolvable()
+{
+    //键值对，eg.:{1: [(0,0), (1,1)], 2: [(2,2)]}
+    QMap<int, QVector<Box*>> typeGroups;
+
+    for (Box* box : m_boxes) {
+        if (!box) continue;
+        int r = box->row;
+        int c = box->col;
+        // 防护：坐标越界或已经被标记为 -1（空位）就跳过
+        if (r < 0 || r >= m_rows || c < 0 || c >= m_cols) continue;
+        int type = m_map[r][c];
+        if (type != -1) {
+            typeGroups[type].append(box);
+        }
+    }
+
+    for (auto it = typeGroups.begin(); it != typeGroups.end(); ++it) {
+        const QVector<Box*>& group = it.value();
+        int n = group.size();
+        for (int i = 0; i < n; ++i) {
+            for (int j = i + 1; j < n; ++j) {
+                Box* a = group[i];
+                Box* b = group[j];
+                if (!a || !b) continue;
+                if (canConnect(a, b)) {
+                    return true; // 找到一对可消，立即返回
+                }
+            }
+        }
+    }
+
+    return false;
+}
+

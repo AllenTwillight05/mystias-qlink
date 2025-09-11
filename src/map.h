@@ -28,6 +28,7 @@ public:
 
     // 判定两 Box 是否可连接
     bool canConnect(Box* a, Box* b);
+    bool isSolvable();
 
     QVector<Box*> m_boxes;            // 存储生成的 Box 实例
     QVector<QVector<int>> m_map;      // 存储类型编号矩阵（二维数组）
@@ -58,15 +59,15 @@ private:
     // 直连、一拐、二拐路径判定（返回路径点）
     bool straightConnect(int r1, int c1, int r2, int c2,
                          const QVector<QVector<int>>& grid,
-                         QVector<QPoint>& outPath);
+                         QVector<QPoint>& outPath) const;
 
     bool oneTurnConnect(int r1, int c1, int r2, int c2,
                         const QVector<QVector<int>>& grid,
-                        QVector<QPoint>& outPath);
+                        QVector<QPoint>& outPath) const;
 
     bool twoTurnConnect(int r1, int c1, int r2, int c2,
                         const QVector<QVector<int>>& grid,
                         int rows, int cols,
-                        QVector<QPoint>& outPath);
+                        QVector<QPoint>& outPath) const;
 
 };
