@@ -21,14 +21,20 @@ Map::Map(int rows, int cols, int typeCount,
     initMap();
 }
 
+// Map::~Map()
+// {
+//     for (Box* b : m_boxes) {
+//         if (b) {
+//             m_scene->removeItem(b);
+//             delete b;
+//         }
+//     }
+//     delete[] disOrder;
+// }
 Map::~Map()
 {
-    for (Box* b : m_boxes) {
-        if (b) {
-            m_scene->removeItem(b);
-            delete b;
-        }
-    }
+    // 这里不要手动 delete b，让 scene->clear() 来做
+    m_boxes.clear();   // 只是清空容器，不销毁 Box
     delete[] disOrder;
 }
 
