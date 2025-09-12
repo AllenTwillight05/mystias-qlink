@@ -406,6 +406,10 @@ void MainWindow::showGameOverDialog() {
 }
 
 void MainWindow::resetToTitleScreen() {
+    if (gameMap) {
+        delete gameMap;
+        gameMap = nullptr;
+    }
     scene->clear(); // 清掉地图、角色等
 
     QGraphicsTextItem* titleText = scene->addText("Is the Order an Anago?");
