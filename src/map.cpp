@@ -64,7 +64,8 @@ void Map::initMap()
 {
     disOrder = new int[m_typeCount];
     for (int i = 0; i < m_typeCount; ++i) {
-        disOrder[i] = QRandomGenerator::global()->bounded(164);
+        //disOrder[i] = QRandomGenerator::global()->bounded(164);    // 精灵图参数：recipe
+        disOrder[i] = QRandomGenerator::global()->bounded(62);    // 精灵图参数：ingridient
     }
 
     m_map.resize(m_rows);

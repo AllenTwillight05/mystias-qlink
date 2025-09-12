@@ -33,13 +33,15 @@ SOURCES += main.cpp \
            src/path.cpp \
            src/box.cpp \
            src/collision.cpp \
-           src/map.cpp
+           src/map.cpp \
+           src/score.cpp
 
 HEADERS += mainwindow.h \
            src/path.h \
            src/box.h \
            src/collision.h \
-           src/map.h
+           src/map.h \
+           src/score.h
 
 
 RESOURCES += resources/resources.qrc

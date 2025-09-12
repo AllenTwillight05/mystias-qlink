@@ -2,22 +2,30 @@
 #include "box.h"
 #include "map.h"
 #include "collision.h"
+#include "score.h"
 #include <QGraphicsPixmapItem>
 #include <QTimer>
 #include <cmath>
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QPushButton>
 
-    , scene(nullptr)
-    , view(nullptr)
-    , character(nullptr)
-    , movementTimer(new QTimer(this))
-    , animationTimer(new QTimer(this))
-    , moveDirection(0, 0)
-    , isMoving(false)
-    , currentDirection(0)
-    , currentFrame(0)
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent),
+    scene(nullptr),
+    view(nullptr),
+    character(nullptr),
+    movementTimer(new QTimer(this)),
+    animationTimer(new QTimer(this)),
+    moveDirection(0, 0),
+    isMoving(false),
+    currentDirection(0),
+    currentFrame(0),
+    countdownTime(initialCountdownTime),
+    countdownTimer(new QTimer(this)),
+    isPaused(false)
 {
     setupScene();
     loadCharacterSpriteSheet();
@@ -30,8 +38,27 @@ MainWindow::MainWindow(QWidget *parent)
     connect(animationTimer, &QTimer::timeout, this, &MainWindow::updateAnimation);
     animationTimer->start(200); // 0.2秒更新一次
 
-    setWindowTitle("Yukari Simple Map");
-    resize(800, 450);
+    // 倒计时计时器（每秒更新一次）
+    connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
+    countdownTimer->start(1000);
+
+    // 初始化倒计时文本
+    countdownText = scene->addText(QString("Time：%1").arg(countdownTime));    //%1是占位符，替换为.后的内容
+    countdownText->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
+    countdownText->setFont(QFont("Consolas", 20, QFont::Bold));
+    countdownText->setZValue(100);
+    countdownText->setPos(20, 20); // 位置可根据需求调整
+
+    // 初始化分数文本
+    score = new Score();
+    scene->addItem(score);
+    score->setPos(mapWidth - 160, 20);   // 右上角
+    score->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
+    score->setFont(QFont("Consolas", 20, QFont::Bold));
+
+
+    setWindowTitle("Mystia’s Ingredient Quest");
+    resize(1200, 675);
 }
 
 MainWindow::~MainWindow()
@@ -45,7 +72,7 @@ void MainWindow::setupScene()
 
     // 设置场景大小
     scene->setSceneRect(0, 0, mapWidth, mapHeight);
-    scene->setBackgroundBrush(Qt::darkGray);
+    scene->setBackgroundBrush(QColorConstants::Svg::antiquewhite);
 
     // 加载背景图片
     QPixmap bgPixmap(":/assets/background.jpg");
@@ -82,7 +109,7 @@ void MainWindow::loadCharacterSpriteSheet()
     //box1 = new Box(":/assets/recipe.png", scene, character->pos());
 
     // 初始化地图
-    gameMap = new Map(yNum, xNum, typeNum, ":/assets/recipe.png", scene, 26);
+    gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
     gameMap->addToScene();
 
 
@@ -262,6 +289,24 @@ void MainWindow::updateAnimation()
     updateCharacterSprite();
 }
 
+void MainWindow::updateCountdown()
+{
+    if (isPaused) return; // 如果暂停，不更新
+
+    countdownTime--;
+
+    if (countdownTime < 0) {
+        countdownTime = 0;
+        countdownTimer->stop();
+        showGameOverDialog();
+        return;
+    }
+
+    countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+
+}
+
+
 void MainWindow::handleActivation(Box* box) {
     if (!box) return;
 
@@ -287,6 +332,9 @@ void MainWindow::handleActivation(Box* box) {
         gameMap->m_boxes.removeOne(lastActivatedBox);
         gameMap->m_boxes.removeOne(box);
         lastActivatedBox = nullptr;
+
+        // 加分
+        score->increase(10);
 
         // ===== 绘制路径 =====
         const QVector<QPointF>& pts = gameMap->m_pathPixels;    //节点像素坐标数组拷贝
@@ -317,5 +365,55 @@ void MainWindow::handleActivation(Box* box) {
         lastActivatedBox = box;
         box->activate();
     }
+
+    if (!gameMap->isSolvable()) {
+        showGameOverDialog();
+    }
+
 }
+
+
+void MainWindow::showGameOverDialog() {
+    // 停止游戏逻辑
+    movementTimer->stop();
+    animationTimer->stop();
+    countdownTimer->stop();
+
+    QDialog dlg(this);
+    dlg.setWindowTitle("Game Over");
+    dlg.resize(300, 150);
+
+    // 设置背景颜色
+    dlg.setStyleSheet("background-color: AntiqueWhite;");
+
+    QVBoxLayout* layout = new QVBoxLayout(&dlg);
+
+    QLabel* label = new QLabel("GAME OVER");
+    label->setStyleSheet("color: SaddleBrown; font-size: 20px;");
+    label->setAlignment(Qt::AlignCenter);
+    layout->addWidget(label);
+
+    QPushButton* okButton = new QPushButton("Return to Menu");
+    okButton->setStyleSheet("background-color: SaddleBrown; color: OldLace;");
+    layout->addWidget(okButton);
+
+    connect(okButton, &QPushButton::clicked, &dlg, &QDialog::accept);
+
+    dlg.exec();
+
+    // 在这里调用你自己的返回菜单逻辑
+    resetToTitleScreen();
+}
+
+void MainWindow::resetToTitleScreen() {
+    scene->clear(); // 清掉地图、角色等
+
+    QGraphicsTextItem* titleText = scene->addText("Is the Order an Anago?");
+    titleText->setDefaultTextColor(Qt::black);
+    titleText->setScale(2.0);
+    titleText->setPos(200, 150);
+
+    // 这里可以先用键盘事件来“重新开始”
+}
+
 

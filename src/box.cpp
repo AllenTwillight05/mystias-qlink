@@ -38,10 +38,15 @@ QPointF Box::generateRandomPosition(const QRectF &sceneRect,const QPointF &chara
 }
 
 void Box::setupSprite(const QPixmap &imagePath, int frameSize){
-    // 精灵图参数
+    // 精灵图参数：recipe
+    // const int cols = 10;   // 横向10个小图
+    // const int rows = 17;   // 纵向17个小图
+    // const int skipLast = 6; // 右下角6个为空
+
+    // 精灵图参数：ingridient
     const int cols = 10;   // 横向10个小图
-    const int rows = 17;   // 纵向17个小图
-    const int skipLast = 6; // 右下角6个为空
+    const int rows = 7;   // 纵向7个小图
+    const int skipLast = 8; // 右下角8个为空
 
     // !!!生成随机帧索引 [0, totalFrames-1]，int转换为整数，不包括最后六个空位!!!
     int totalFrames = cols * rows - skipLast;

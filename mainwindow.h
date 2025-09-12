@@ -12,6 +12,7 @@
 
 class Box;
 class Map;
+class Score;
 
 class MainWindow : public QMainWindow
 {
@@ -28,6 +29,7 @@ protected:
 private slots:
     void updateMovement();
     void updateAnimation();
+    void updateCountdown();
 
 private:
     void setupScene();
@@ -35,6 +37,8 @@ private:
     void updateCharacterSprite();
     void startMoving(int direction);
     void stopMoving();
+    void showGameOverDialog();
+    void resetToTitleScreen();
 
 private:
     // 图形相关
@@ -64,7 +68,7 @@ private:
     // 地图相关
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
-    int yNum = 6, xNum = 8, typeNum = 6;
+    int yNum = 2, xNum = 3, typeNum = 3;
     Map* gameMap;  // 持有Map实例指针
 
     // 消除相关
@@ -72,7 +76,14 @@ private:
     void handleActivation(Box* box);
     QGraphicsPathItem* currentPathItem = nullptr;
 
-    // 按键状态
-    //bool keys[4]; // W, A, S, D多按键控制
+    // 倒计时相关
+    int initialCountdownTime = 10;      // 初始倒计时时间，方便修改
+    int countdownTime;                  // 剩余时间（秒）
+    QGraphicsTextItem* countdownText;   // 显示倒计时的文本
+    QTimer* countdownTimer;             // 每秒更新倒计时
+    bool isPaused;                      // 暂停状态
+
+    // 分数相关
+    Score* score;   // 成员变量
 };
 
