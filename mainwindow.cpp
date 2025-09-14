@@ -1,12 +1,10 @@
 #include "mainwindow.h"
-#include "box.h"
+#include "character.h"
 #include "map.h"
-#include "collision.h"
 #include "score.h"
-#include <QGraphicsPixmapItem>
-#include <QTimer>
-#include <cmath>
+#include "box.h"
 
+#include <QTimer>
 #include <QDialog>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -16,311 +14,115 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
     scene(nullptr),
     view(nullptr),
-    character(nullptr),
-    movementTimer(new QTimer(this)),
-    animationTimer(new QTimer(this)),
-    moveDirection(0, 0),
-    isMoving(false),
-    currentDirection(0),
-    currentFrame(0),
-    countdownTime(initialCountdownTime),
+    gameMap(nullptr),
     countdownTimer(new QTimer(this)),
     isPaused(false)
 {
     setupScene();
-    loadCharacterSpriteSheet();
 
-    // 设置移动计时器 (30FPS)
-    connect(movementTimer, &QTimer::timeout, this, &MainWindow::updateMovement);    //*sender, &signal, *receiver, &method
-    movementTimer->start(33); // 约30FPS
+    // 初始化地图
+    gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
+    gameMap->addToScene();
 
-    // 设置动画计时器 (5FPS)
-    connect(animationTimer, &QTimer::timeout, this, &MainWindow::updateAnimation);
-    animationTimer->start(200); // 0.2秒更新一次
+    // === 创建角色1（WASD 控制） ===
+    Character* character1 = new Character(":/assets/sprites0.png", this);
+    character1->setPos(mapWidth/5, mapHeight/5);
+    character1->setControls({ Qt::Key_W, Qt::Key_S, Qt::Key_A, Qt::Key_D });
+    character1->setGameMap(gameMap);
+    scene->addItem(character1);
+    connect(character1, &Character::collidedWithBox, this, &MainWindow::handleActivation);
+    characters.append(character1);
 
-    // 倒计时计时器（每秒更新一次）
-    connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
-    countdownTimer->start(1000);
+    // === 创建角色2（IJKL控制） ===
+    Character* character2 = new Character(":/assets/sprites1.png", this);
+    character2->setPos(mapWidth/5 + 80, mapHeight/5 + 80);
+    character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
+    character2->setGameMap(gameMap);
+    scene->addItem(character2);
+    connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
+    characters.append(character2);
 
-    // 初始化倒计时文本
-    countdownText = scene->addText(QString("Time：%1").arg(countdownTime));    //%1是占位符，替换为.后的内容
+    // 倒计时
+    countdownTime = initialCountdownTime;
+    countdownText = scene->addText(QString("Time：%1").arg(countdownTime));
     countdownText->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
     countdownText->setFont(QFont("Consolas", 20, QFont::Bold));
     countdownText->setZValue(100);
-    countdownText->setPos(20, 20); // 位置可根据需求调整
+    countdownText->setPos(20, 20);
 
-    // 初始化分数文本
+    connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
+    countdownTimer->start(1000);
+
+    // 分数
     score = new Score();
     scene->addItem(score);
-    score->setPos(mapWidth - 160, 20);   // 右上角
+    score->setPos(mapWidth - 160, 20);
     score->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
     score->setFont(QFont("Consolas", 20, QFont::Bold));
-
 
     setWindowTitle("Mystia’s Ingredient Quest");
     resize(1200, 675);
 }
 
-MainWindow::~MainWindow()
-{
-}
+MainWindow::~MainWindow() {}
 
 void MainWindow::setupScene()
 {
     scene = new QGraphicsScene(this);
     view = new QGraphicsView(scene);
-
-    // 设置场景大小
     scene->setSceneRect(0, 0, mapWidth, mapHeight);
     scene->setBackgroundBrush(QColorConstants::Svg::antiquewhite);
 
-    // 加载背景图片
     QPixmap bgPixmap(":/assets/background.jpg");
     if (!bgPixmap.isNull()) {
         QGraphicsPixmapItem *bgItem = scene->addPixmap(bgPixmap);
         bgItem->setZValue(-100);
     }
 
-    //view->scale(2.0, 2.0); // 等比例放大场景
     setCentralWidget(view);
-}
-
-void MainWindow::loadCharacterSpriteSheet()
-{
-    characterSpriteSheet.load(":/assets/sprites0.png");
-
-    character = new QGraphicsPixmapItem();
-    character->setPos(mapWidth/5, mapHeight/5);
-    //character->setScale(1.5);
-    character->setOffset(-frameWidth/2, -frameHeight/2);
-
-    // 设置初始精灵图像
-    updateCharacterSprite();
-
-    scene->addItem(character);
-
-    // 初始化标记（在构造函数或初始化函数中）
-    // m_roleMarker = new QGraphicsEllipseItem(-3, -3, 6, 6); // 坐标小圆点
-    // m_roleMarker->setBrush(Qt::green);
-    // m_roleMarker->setZValue(100);
-    // scene->addItem(m_roleMarker); // 添加到场景
-
-    // 初始化箱子
-    //box1 = new Box(":/assets/recipe.png", scene, character->pos());
-
-    // 初始化地图
-    gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
-    gameMap->addToScene();
-
-
-}
-
-void MainWindow::updateCharacterSprite()
-{
-    if (characterSpriteSheet.isNull()) return;
-
-    // 计算源矩形 (精灵图布局: 每行一个动画帧，每列一个方向)
-    QRect sourceRect(
-        currentDirection * frameWidth,  // x: 方向索引 * 帧宽度
-        currentFrame * frameHeight,     // y: 帧索引 * 帧高度
-        frameWidth,
-        frameHeight
-        );
-
-    QPixmap framePixmap = characterSpriteSheet.copy(sourceRect);
-    character->setPixmap(framePixmap);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    if (event->isAutoRepeat()) return; // 忽略重复按键！！！重要！！！
-
-    bool wasMoving = isMoving;
-
-    switch (event->key()) {
-    case Qt::Key_W:
-        startMoving(3); // Up
-        break;
-    case Qt::Key_A:
-        startMoving(1); // Left
-        break;
-    case Qt::Key_S:
-        startMoving(0); // Down
-        break;
-    case Qt::Key_D:
-        startMoving(2); // Right
-        break;
-    case Qt::Key_Q:
-        //delete box1;
-        //box1 = new Box(":/assets/recipe.png", scene, character->pos());
-        break;
-    default:
-        QMainWindow::keyPressEvent(event);
-        return;
-    }
-
-    // 如果从静止变为移动，立即切换到第一个行走帧（此时wasMoving初始为0，isMoving在switch中变1）
-    if (!wasMoving && isMoving) {
-        currentFrame = 1;
-        updateCharacterSprite();
+    for (Character* c : characters) {
+        c->handleKeyPress(event);
     }
 }
 
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
-    if (event->isAutoRepeat()) return;// 同keyPressEvent，忽略重复按键
-
-    switch (event->key()) {
-    case Qt::Key_W:
-    case Qt::Key_A:
-    case Qt::Key_S:
-    case Qt::Key_D:stopMoving();break;
-    default:
-        QMainWindow::keyReleaseEvent(event);
-        return;
+    for (Character* c : characters) {
+        c->handleKeyRelease(event);
     }
-}
-
-void MainWindow::startMoving(int direction)
-{
-    currentDirection = direction;
-    isMoving = true;
-
-    // 设置移动方向
-    switch (direction) {
-    case 0: moveDirection = QPointF(0, 1);  break; // Down
-    case 1: moveDirection = QPointF(-1, 0); break; // Left
-    case 2: moveDirection = QPointF(1, 0);  break; // Right
-    case 3: moveDirection = QPointF(0, -1); break; // Up
-    }
-}
-
-void MainWindow::stopMoving()
-{
-    isMoving = false;
-    moveDirection = QPointF(0, 0);
-    currentFrame = 0; // 回到静止帧
-    updateCharacterSprite();
-}
-
-void MainWindow::updateMovement()
-{
-    if (!isMoving) return;
-
-    QPointF newPos = character->pos() + moveDirection * moveSpeed;
-    bool willCollide = false;
-    //m_roleMarker->setPos(newPos);//坐标小圆点
-
-    Box* nearestBox = nullptr;
-    qreal nearestDist = std::numeric_limits<qreal>::max();
-
-    // 遍历所有Box
-    for (Box* box : gameMap->m_boxes) {
-        // 碰撞检测
-        if (Collision::willCollide(character->pos(), moveDirection, moveSpeed, box, box->boxSize)) {
-            willCollide = true;
-            handleActivation(box);   // 单独函数处理激活/消除逻辑
-            break;
-        }
-
-        // Z值调整
-        QPointF del = Collision::getDistance(character->pos(), box->pos());
-        character->setZValue(del.y() > 0 ? 0 : 2);
-
-        // 距离检测，找最近的
-        qreal dist = Collision::EuclidDistance(del);
-        if (dist < nearestDist) {
-            nearestDist = dist;
-            nearestBox = box;
-        }
-    }
-
-    // 只让最近的 Box 进入预选中（阈值控制）
-    for (Box* box : gameMap->m_boxes) {
-        if (box == nearestBox && nearestDist < frameWidth * 0.75)box->preAct();
-        else box->npreAct();
-    }
-
-    // 如果发生碰撞，停住
-    if (willCollide) {
-        moveDirection = QPointF(0, 0);
-        newPos = character->pos();
-    }
-
-    // 边界循环
-    qreal x = std::fmod(newPos.x(), mapWidth);
-    qreal y = std::fmod(newPos.y(), mapHeight);
-    if (x < 0) x += mapWidth;
-    if (y < 0) y += mapHeight;
-    character->setPos(x, y);
-}
-
-
-void MainWindow::updateAnimation()
-{
-    if (!isMoving) return;
-
-    // 动画帧循环：1 -> 0 -> 2 -> 0 -> 1 -> 0 -> 2 -> ...
-    static bool nextIsTwo = false; // 静态变量记录下次是否应该是帧2
-
-    switch (currentFrame) {
-    case 0:
-        // 从0帧切换到1帧或2帧（交替）
-        if (nextIsTwo) {
-            currentFrame = 2;
-            nextIsTwo = false;
-        } else {
-            currentFrame = 1;
-            nextIsTwo = true;
-        }
-        break;
-    case 1:
-        currentFrame = 0;
-        break;
-    case 2:
-        currentFrame = 0;
-        break;
-    default:
-        currentFrame = 1;
-        nextIsTwo = true;
-        break;
-    }
-
-    updateCharacterSprite();
 }
 
 void MainWindow::updateCountdown()
 {
-    if (isPaused) return; // 如果暂停，不更新
+    if (isPaused) return;
 
     countdownTime--;
-
     if (countdownTime < 0) {
         countdownTime = 0;
         countdownTimer->stop();
         showGameOverDialog();
         return;
     }
-
     countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
-
 }
 
-
-void MainWindow::handleActivation(Box* box) {
+void MainWindow::handleActivation(Box* box)
+{
     if (!box) return;
 
-    // 如果还没有激活过任何方块
+    // 保留你原来的逻辑
     if (!lastActivatedBox) {
         lastActivatedBox = box;
         box->activate();
         return;
     }
 
-    // 如果点击到同一个方块，忽略
     if (box == lastActivatedBox) return;
 
-    // 判定是否能消除
     if (gameMap->canConnect(lastActivatedBox, box)) {
         // 消除逻辑
         lastActivatedBox->deactivate();
@@ -333,34 +135,29 @@ void MainWindow::handleActivation(Box* box) {
         gameMap->m_boxes.removeOne(box);
         lastActivatedBox = nullptr;
 
-        // 加分
         score->increase(10);
 
-        // ===== 绘制路径 =====
-        const QVector<QPointF>& pts = gameMap->m_pathPixels;    //节点像素坐标数组拷贝
+        // 绘制路径
+        const QVector<QPointF>& pts = gameMap->m_pathPixels;
         if (pts.size() >= 2) {
             QPainterPath path(pts[0]);
             for (int i = 1; i < pts.size(); ++i) {
-                path.lineTo(pts[i]);  // 每一个拐点都画出来
+                path.lineTo(pts[i]);
             }
-            // QPen pen(Qt::yellow, 10);
             QPen pen(QColor(255, 223, 128), 10);
-            pen.setJoinStyle(Qt::RoundJoin);   // 拐角圆角
-            pen.setCapStyle(Qt::RoundCap);     // 线段端点圆头
+            pen.setJoinStyle(Qt::RoundJoin);
+            pen.setCapStyle(Qt::RoundCap);
 
             QGraphicsPathItem* lineItem =
                 gameMap->getScene()->addPath(path, pen);
-            lineItem->setZValue(0); // 在底层，避免遮住角色
+            lineItem->setZValue(0);
 
-            // 延时删除折线
-            QTimer::singleShot(500, [scene = gameMap->getScene(), lineItem]() { //Lambda表达式（匿名函数），[capture_list传入参数](parameters函数参数) -> return_type {函数体}
+            QTimer::singleShot(500, [scene = gameMap->getScene(), lineItem]() {
                 scene->removeItem(lineItem);
                 delete lineItem;
             });
         }
-    }
-     else {
-        // 不满足条件，重置上一个，激活当前的
+    } else {
         lastActivatedBox->deactivate();
         lastActivatedBox = box;
         box->activate();
@@ -369,25 +166,20 @@ void MainWindow::handleActivation(Box* box) {
     if (!gameMap->isSolvable()) {
         showGameOverDialog();
     }
-
 }
 
-
 void MainWindow::showGameOverDialog() {
-    // 停止游戏逻辑
-    movementTimer->stop();
-    animationTimer->stop();
+    for (Character* c : characters) {
+        c->stopTimers();
+    }
     countdownTimer->stop();
 
     QDialog dlg(this);
     dlg.setWindowTitle("Game Over");
     dlg.resize(300, 150);
-
-    // 设置背景颜色
     dlg.setStyleSheet("background-color: AntiqueWhite;");
 
     QVBoxLayout* layout = new QVBoxLayout(&dlg);
-
     QLabel* label = new QLabel("GAME OVER");
     label->setStyleSheet("color: SaddleBrown; font-size: 20px;");
     label->setAlignment(Qt::AlignCenter);
@@ -396,12 +188,10 @@ void MainWindow::showGameOverDialog() {
     QPushButton* okButton = new QPushButton("Return to Menu");
     okButton->setStyleSheet("background-color: SaddleBrown; color: OldLace;");
     layout->addWidget(okButton);
-
     connect(okButton, &QPushButton::clicked, &dlg, &QDialog::accept);
 
     dlg.exec();
 
-    // 在这里调用你自己的返回菜单逻辑
     resetToTitleScreen();
 }
 
@@ -410,14 +200,17 @@ void MainWindow::resetToTitleScreen() {
         delete gameMap;
         gameMap = nullptr;
     }
-    scene->clear(); // 清掉地图、角色等
+
+    for (Character* c : characters) {
+        scene->removeItem(c);
+        delete c;
+    }
+    characters.clear();
+
+    scene->clear();
 
     QGraphicsTextItem* titleText = scene->addText("Is the Order an Anago?");
     titleText->setDefaultTextColor(Qt::black);
     titleText->setScale(2.0);
     titleText->setPos(200, 150);
-
-    // 这里可以先用键盘事件来“重新开始”
 }
-
-

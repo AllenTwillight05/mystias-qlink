@@ -5,5 +5,6 @@
         <file>assets/wellington.png</file>
         <file>assets/recipe.png</file>
         <file>assets/ingredient.png</file>
+        <file>assets/sprites1.png</file>
     </qresource>
 </RCC>
