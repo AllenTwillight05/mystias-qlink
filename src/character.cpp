@@ -24,6 +24,16 @@ Character::Character(const QString& spritePath, QObject* parent)
     animationTimer = new QTimer(this);
     connect(animationTimer, &QTimer::timeout, this, &Character::updateAnimation);
     animationTimer->start(200);
+
+    // 坐标小圆点
+    if (debugMarkerEnabled) {
+        roleMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this);
+        roleMarker->setBrush(Qt::green);
+        roleMarker->setZValue(100);
+        // 把 roleMarker 设为 Character 的子对象，这样它会跟随移动
+        roleMarker->setParentItem(this);
+    }
+
 }
 
 void Character::updateCharacterSprite() {

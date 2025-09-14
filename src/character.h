@@ -65,4 +65,8 @@ private:
 
     // 地图引用（用于碰撞检测）
     Map* gameMap = nullptr;
+
+    // debug用坐标小圆点
+    bool debugMarkerEnabled = false;
+    QGraphicsEllipseItem* roleMarker = nullptr;
 };

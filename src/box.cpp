@@ -11,11 +11,12 @@ Box::Box(const QPointF &pos, const QString &imagePath, QGraphicsScene *scene)
     setPos(pos);
 
     // 在构造函数中添加（需要#include <QGraphicsEllipseItem>）
-    QGraphicsEllipseItem* debugMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this); // 创建坐标小圆点
-    debugMarker->setBrush(Qt::green); // 设置为绿色
-    debugMarker->setZValue(100);
-    debugMarker->setPos(0, 0); // 相对于父项的位置（中心点）
-
+    if (debugMarkerEnabled){
+        QGraphicsEllipseItem* debugMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this); // 创建坐标小圆点
+        debugMarker->setBrush(Qt::green); // 设置为绿色
+        debugMarker->setZValue(100);
+        debugMarker->setPos(0, 0); // 相对于父项的位置（中心点）
+    }
     this->setScale(1.5);
     this->setZValue(1);
     scene->addItem(this);

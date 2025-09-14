@@ -22,6 +22,7 @@ private:
     void setupSprite(const QPixmap &imagePath, int frameSize = 26);//帧大小
     QPointF generateRandomPosition(const QRectF &sceneRect,const QPointF &characterPos);//随机位置辅助构造函数
     QGraphicsRectItem* m_overlay = nullptr;  // 成员变量存储遮罩，用于预选中效果
+    bool debugMarkerEnabled = false;    // debug用坐标小圆点
 };
 
 
