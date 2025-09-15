@@ -30,13 +30,14 @@ private:
     void setupScene();
     void showGameOverDialog();
     void resetToTitleScreen();
+    void togglePause();
 
 private:
     // 图形相关
     QGraphicsScene *scene;
     QGraphicsView *view;
 
-    QVector<Character*> characters;  // 所有角色
+    QVector<Character*> characters;  // 所有角色数组
 
     // 地图相关
     const qreal mapWidth = 800;

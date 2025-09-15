@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     // === 创建角色1（WASD 控制） ===
     Character* character1 = new Character(":/assets/sprites0.png", this);
     character1->setPos(mapWidth/5, mapHeight/5);
-    character1->setControls({ Qt::Key_W, Qt::Key_S, Qt::Key_A, Qt::Key_D });
+    character1->setControls({ Qt::Key_W, Qt::Key_S, Qt::Key_A, Qt::Key_D });    //Qt::Key_W等本质是int
     character1->setGameMap(gameMap);
     scene->addItem(character1);
     connect(character1, &Character::collidedWithBox, this, &MainWindow::handleActivation);
@@ -35,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // === 创建角色2（IJKL控制） ===
     Character* character2 = new Character(":/assets/sprites1.png", this);
-    character2->setPos(mapWidth/5 + 80, mapHeight/5 + 80);
+    character2->setPos(mapWidth/5*4, mapHeight/5*4);
     character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
     character2->setGameMap(gameMap);
     scene->addItem(character2);
@@ -84,6 +84,12 @@ void MainWindow::setupScene()
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
+    // 添加暂停快捷键（空格键）
+    if (event->key() == Qt::Key_Space) {
+        togglePause();
+        return;  // 避免传递给角色
+    }
+
     for (Character* c : characters) {
         c->handleKeyPress(event);
     }
@@ -108,6 +114,19 @@ void MainWindow::updateCountdown()
         return;
     }
     countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+}
+
+void MainWindow::togglePause(){
+    isPaused = !isPaused;
+    if(isPaused){
+        for(Character* c: characters){
+            c->isPaused = true;
+        }
+    }else{
+        for(Character* c: characters){
+            c->isPaused = false;
+        }
+    }
 }
 
 void MainWindow::handleActivation(Box* box)

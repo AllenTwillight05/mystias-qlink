@@ -12,7 +12,7 @@ class Map;
 
 // 键位配置结构体
 struct ControlScheme {
-    int upKey;
+    int upKey;  //Qt::Key_W等按键常量本质上是int型枚举值enum value
     int downKey;
     int leftKey;
     int rightKey;
@@ -31,6 +31,7 @@ public:
     void handleKeyPress(QKeyEvent* event);
     void handleKeyRelease(QKeyEvent* event);
     void stopTimers();
+    bool isPaused;
 
 signals:
     void collidedWithBox(Box* box);   // 碰撞时发射信号，交给 MainWindow 处理

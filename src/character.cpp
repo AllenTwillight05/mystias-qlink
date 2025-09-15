@@ -8,7 +8,7 @@
 
 Character::Character(const QString& spritePath, QObject* parent)
     : QObject(parent), QGraphicsPixmapItem(),
-    isMoving(false), currentDirection(0), currentFrame(0)
+    isPaused(false), isMoving(false), currentDirection(0), currentFrame(0)
 {
     spriteSheet.load(spritePath);
     setOffset(-frameWidth/2, -frameHeight/2);
@@ -68,6 +68,7 @@ void Character::stopMoving() {
 
 void Character::updateMovement() {
     if (!isMoving) return;
+    if (isPaused) return;
 
     QPointF newPos = pos() + moveDirection * moveSpeed;
     bool willCollide = false;
@@ -121,6 +122,7 @@ void Character::updateMovement() {
 
 void Character::updateAnimation() {
     if (!isMoving) return;
+    if (isPaused) return;
 
     static bool nextIsTwo = false;
     switch (currentFrame) {
