@@ -42,7 +42,6 @@ Map::~Map()
 
 //  把格子坐标 (r,c) 转为像素中心点
 QPointF Map::cellCenterPx(int r, int c) const {
-    const int spacing = m_frameSize + 15;   //与Map::addToScene()中的保持一致
 
     int totalWidth  = (m_cols - 1) * spacing;
     int totalHeight = (m_rows - 1) * spacing;
@@ -102,7 +101,6 @@ QPixmap Map::getSpriteByType(int typeId)
 
 void Map::addToScene()
 {
-    const int spacing = m_frameSize + 15;
     int totalWidth  = (m_cols - 1) * spacing;
     int totalHeight = (m_rows - 1) * spacing;
 

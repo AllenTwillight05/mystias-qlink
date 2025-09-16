@@ -24,6 +24,7 @@ public:
     // 获取地图行列数
     int rowCount() const { return m_rows; }
     int colCount() const { return m_cols; }
+    qreal getSpacing() const { return spacing; }
     QGraphicsScene* getScene() const { return m_scene; }
 
     // 判定两 Box 是否可连接
@@ -43,6 +44,7 @@ private:
     int m_cols;             // 列数
     int m_typeCount;        // 可用的类型数量
     int m_frameSize;        // 精灵图小块大小（正方形）
+    const int spacing = m_frameSize + 15;
     QString m_spriteSheetPath;
     int *disOrder;          // 打乱用数组
 

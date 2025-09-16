@@ -16,6 +16,7 @@ Character::Character(const QString& spritePath, QObject* parent)
     setOffset(-frameWidth/2, -frameHeight/2);
 
     updateCharacterSprite();
+    setZValue(2);
 
     // 移动计时器 (30 FPS)
     movementTimer = new QTimer(this);
@@ -28,9 +29,9 @@ Character::Character(const QString& spritePath, QObject* parent)
     animationTimer->start(200);
 
     characterScore->setPos(-45, -50);       // 位置调整为角色头顶偏移
-    characterScore->setDefaultTextColor(QColorConstants::Svg::saddlebrown); // 颜色 [5]
-    characterScore->setFont(QFont("Consolas", 16, QFont::Bold)); // 字体略小于全局版本 [5]
-    characterScore->setZValue(150);
+    // characterScore->setDefaultTextColor(QColorConstants::Svg::saddlebrown); // 颜色
+    // characterScore->setFont(QFont("Consolas", 16, QFont::Bold));
+    // characterScore->setZValue(150);
 
     // 坐标小圆点
     if (debugMarkerEnabled) {
@@ -93,16 +94,20 @@ void Character::updateMovement() {
                 break;
             }
 
-            // Z 值调整
-            QPointF del = Collision::getDistance(pos(), box->pos());
-            setZValue(del.y() > 0 ? 0 : 2);
+            // setZValue(del.y() > 0 ? 0 : 2);
 
             // 距离检测，找最近的
+            QPointF del = Collision::getDistance(pos(), box->pos());
             qreal dist = Collision::EuclidDistance(del);
             if (dist < nearestDist) {
                 nearestDist = dist;
                 nearestBox = box;
             }
+        }
+
+        // Z 值调整
+        if (nearestBox) {
+            setZValue(pos().y() > ( nearestBox->pos().y() - gameMap->getSpacing() / 2 ) ? 2 : 0);
         }
 
         // 最近 Box 高亮

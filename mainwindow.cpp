@@ -72,7 +72,7 @@ void MainWindow::setupScene()
 {
     scene = new QGraphicsScene(this);
     view = new QGraphicsView(scene);
-    scene->setItemIndexMethod(QGraphicsScene::NoIndex); // 禁用BSP树，使用堆叠顺序
+    // scene->setItemIndexMethod(QGraphicsScene::NoIndex); // 禁用BSP树，使用堆叠顺序
     scene->setSceneRect(0, 0, mapWidth, mapHeight);
     scene->setBackgroundBrush(QColorConstants::Svg::antiquewhite);
 
@@ -172,7 +172,7 @@ void MainWindow::handleActivation(Box* box, Character* sender)
 
             QGraphicsPathItem* lineItem =
                 gameMap->getScene()->addPath(path, pen);
-            lineItem->setZValue(0);
+            lineItem->setZValue(-1);
 
             QTimer::singleShot(500, [scene = gameMap->getScene(), lineItem]() {
                 scene->removeItem(lineItem);
