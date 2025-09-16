@@ -9,6 +9,7 @@
 // 前向声明，避免循环包含
 class Box;
 class Map;
+class Score;
 
 // 键位配置结构体
 struct ControlScheme {
@@ -27,6 +28,7 @@ public:
 
     void setControls(const ControlScheme& scheme) { controls = scheme; }
     void setGameMap(Map* map) { gameMap = map; }
+    Score* getCharacterScore() const { return characterScore; }
 
     void handleKeyPress(QKeyEvent* event);
     void handleKeyRelease(QKeyEvent* event);
@@ -34,7 +36,7 @@ public:
     bool isPaused;
 
 signals:
-    void collidedWithBox(Box* box);   // 碰撞时发射信号，交给 MainWindow 处理
+    void collidedWithBox(Box* box, Character* sender);  // sender参数,碰撞时发射信号，交给 MainWindow 处理
 
 private slots:
     void updateMovement();
@@ -66,6 +68,9 @@ private:
 
     // 地图引用（用于碰撞检测）
     Map* gameMap = nullptr;
+
+    // 分数对象指针
+    Score* characterScore;
 
     // debug用坐标小圆点
     bool debugMarkerEnabled = false;

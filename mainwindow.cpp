@@ -32,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
     scene->addItem(character1);
     connect(character1, &Character::collidedWithBox, this, &MainWindow::handleActivation);
     characters.append(character1);
+    //Score* score1 = new Score(character1);
 
     // === 创建角色2（IJKL控制） ===
     Character* character2 = new Character(":/assets/sprites1.png", this);
@@ -41,6 +42,7 @@ MainWindow::MainWindow(QWidget *parent)
     scene->addItem(character2);
     connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
     characters.append(character2);
+    //Score* score2 = new Score(character2);
 
     // 倒计时
     countdownTime = initialCountdownTime;
@@ -54,11 +56,11 @@ MainWindow::MainWindow(QWidget *parent)
     countdownTimer->start(1000);
 
     // 分数
-    score = new Score();
-    scene->addItem(score);
-    score->setPos(mapWidth - 160, 20);
-    score->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
-    score->setFont(QFont("Consolas", 20, QFont::Bold));
+    // score = new Score();
+    // scene->addItem(score);
+    // score->setPos(mapWidth - 160, 20);
+    // score->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
+    // score->setFont(QFont("Consolas", 20, QFont::Bold));
 
     setWindowTitle("Mystia’s Ingredient Quest");
     resize(1200, 675);
@@ -70,6 +72,7 @@ void MainWindow::setupScene()
 {
     scene = new QGraphicsScene(this);
     view = new QGraphicsView(scene);
+    scene->setItemIndexMethod(QGraphicsScene::NoIndex); // 禁用BSP树，使用堆叠顺序
     scene->setSceneRect(0, 0, mapWidth, mapHeight);
     scene->setBackgroundBrush(QColorConstants::Svg::antiquewhite);
 
@@ -129,7 +132,7 @@ void MainWindow::togglePause(){
     }
 }
 
-void MainWindow::handleActivation(Box* box)
+void MainWindow::handleActivation(Box* box, Character* sender)
 {
     if (!box) return;
 
@@ -154,7 +157,7 @@ void MainWindow::handleActivation(Box* box)
         gameMap->m_boxes.removeOne(box);
         lastActivatedBox = nullptr;
 
-        score->increase(10);
+        sender->getCharacterScore()->increase(10); // 调用Character内部的分数对象
 
         // 绘制路径
         const QVector<QPointF>& pts = gameMap->m_pathPixels;

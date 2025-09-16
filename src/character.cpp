@@ -1,6 +1,7 @@
 #include "character.h"
 #include "box.h"
 #include "map.h"
+#include "score.h"
 #include "collision.h"   // 这里需要用到 Collision::willCollide 等函数
 
 #include <cmath>
@@ -8,7 +9,8 @@
 
 Character::Character(const QString& spritePath, QObject* parent)
     : QObject(parent), QGraphicsPixmapItem(),
-    isPaused(false), isMoving(false), currentDirection(0), currentFrame(0)
+    isPaused(false), isMoving(false), currentDirection(0), currentFrame(0),
+    characterScore(new Score(this))
 {
     spriteSheet.load(spritePath);
     setOffset(-frameWidth/2, -frameHeight/2);
@@ -24,6 +26,11 @@ Character::Character(const QString& spritePath, QObject* parent)
     animationTimer = new QTimer(this);
     connect(animationTimer, &QTimer::timeout, this, &Character::updateAnimation);
     animationTimer->start(200);
+
+    characterScore->setPos(-45, -50);       // 位置调整为角色头顶偏移
+    characterScore->setDefaultTextColor(QColorConstants::Svg::saddlebrown); // 颜色 [5]
+    characterScore->setFont(QFont("Consolas", 16, QFont::Bold)); // 字体略小于全局版本 [5]
+    characterScore->setZValue(150);
 
     // 坐标小圆点
     if (debugMarkerEnabled) {
@@ -67,8 +74,9 @@ void Character::stopMoving() {
 }
 
 void Character::updateMovement() {
-    if (!isMoving) return;
-    if (isPaused) return;
+    if (!isMoving || isPaused) return;
+
+    characterScore->setZValue(150);
 
     QPointF newPos = pos() + moveDirection * moveSpeed;
     bool willCollide = false;
@@ -81,7 +89,7 @@ void Character::updateMovement() {
             // 碰撞检测
             if (Collision::willCollide(pos(), moveDirection, moveSpeed, box, box->boxSize)) {
                 willCollide = true;
-                emit collidedWithBox(box);   // 通知 MainWindow
+                emit collidedWithBox(box, this);    // 声明事件发生,通知 MainWindow
                 break;
             }
 
@@ -121,8 +129,7 @@ void Character::updateMovement() {
 }
 
 void Character::updateAnimation() {
-    if (!isMoving) return;
-    if (isPaused) return;
+    if (!isMoving || isPaused) return;;
 
     static bool nextIsTwo = false;
     switch (currentFrame) {

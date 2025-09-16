@@ -24,7 +24,7 @@ protected:
 
 private slots:
     void updateCountdown();
-    void handleActivation(Box* box);   // 角色碰到 Box 后调用
+    void handleActivation(Box* box, Character* sender);   // 角色碰到 Box 后调用
 
 private:
     void setupScene();
@@ -42,7 +42,7 @@ private:
     // 地图相关
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
-    int yNum = 2, xNum = 3, typeNum = 3;
+    int yNum = 4, xNum = 3, typeNum = 3;
     Map* gameMap;
 
     // 消除相关
