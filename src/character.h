@@ -29,6 +29,8 @@ public:
     void setControls(const ControlScheme& scheme) { controls = scheme; }
     void setGameMap(Map* map) { gameMap = map; }
     Score* getCharacterScore() const { return characterScore; }
+    QPointF getPosition() const { return pos(); };
+    void setPosition(QPointF& pos) { setPos(pos); };
 
     void handleKeyPress(QKeyEvent* event);
     void handleKeyRelease(QKeyEvent* event);

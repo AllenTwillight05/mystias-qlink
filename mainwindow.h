@@ -4,6 +4,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QVector>
+#include "savegamemanager.h"
 
 class Character;
 class Box;
@@ -26,11 +27,15 @@ private slots:
     void updateCountdown();
     void handleActivation(Box* box, Character* sender);   // 角色碰到 Box 后调用
 
+    void onSaveGame();
+    void onLoadGame();
+    void togglePause();
+
 private:
     void setupScene();
     void showGameOverDialog();
     void resetToTitleScreen();
-    void togglePause();
+    void createMenu();
 
 private:
     // 图形相关
@@ -58,4 +63,7 @@ private:
 
     // 分数相关
     Score* score;
+
+    // 存档管理
+    SaveGameManager saveManager;
 };

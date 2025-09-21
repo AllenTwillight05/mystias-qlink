@@ -9,6 +9,11 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QMenuBar>       // 新增：菜单栏
+#include <QMenu>          // 新增：菜单
+#include <QAction>        // 新增：菜单动作
+#include <QFileDialog>    // 新增：文件对话框
+#include <QMessageBox>    // 新增：消息框
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -16,9 +21,11 @@ MainWindow::MainWindow(QWidget *parent)
     view(nullptr),
     gameMap(nullptr),
     countdownTimer(new QTimer(this)),
-    isPaused(false)
+    isPaused(false),
+    saveManager(this)
 {
     setupScene();
+    createMenu();
 
     // 初始化地图
     gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
@@ -35,14 +42,14 @@ MainWindow::MainWindow(QWidget *parent)
     //Score* score1 = new Score(character1);
 
     // === 创建角色2（IJKL控制） ===
-    Character* character2 = new Character(":/assets/sprites1.png", this);
-    character2->setPos(mapWidth/5*4, mapHeight/5*4);
-    character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
-    character2->setGameMap(gameMap);
-    scene->addItem(character2);
-    connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
-    characters.append(character2);
-    //Score* score2 = new Score(character2);
+    // Character* character2 = new Character(":/assets/sprites1.png", this);
+    // character2->setPos(mapWidth/5*4, mapHeight/5*4);
+    // character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
+    // character2->setGameMap(gameMap);
+    // scene->addItem(character2);
+    // connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
+    // characters.append(character2);
+
 
     // 倒计时
     countdownTime = initialCountdownTime;
@@ -61,6 +68,11 @@ MainWindow::MainWindow(QWidget *parent)
     // score->setPos(mapWidth - 160, 20);
     // score->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
     // score->setFont(QFont("Consolas", 20, QFont::Bold));
+
+    // 连接存档管理器的错误信号
+    connect(&saveManager, &SaveGameManager::errorOccurred, this, [this](const QString &message) {
+        QMessageBox::warning(this, tr("存档错误"), message);
+    });
 
     setWindowTitle("Mystia’s Ingredient Quest");
     resize(1200, 675);
@@ -189,6 +201,128 @@ void MainWindow::handleActivation(Box* box, Character* sender)
         showGameOverDialog();
     }
 }
+
+
+// 创建菜单
+void MainWindow::createMenu()
+{
+    QMenu *gameMenu = menuBar()->addMenu(tr("选项"));
+
+    // 保存游戏动作
+    QAction *saveAction = new QAction(tr("保存游戏"), this);
+    connect(saveAction, &QAction::triggered, this, &MainWindow::onSaveGame);
+    gameMenu->addAction(saveAction);
+
+    // 加载游戏动作
+    QAction *loadAction = new QAction(tr("加载游戏"), this);
+    connect(loadAction, &QAction::triggered, this, &MainWindow::onLoadGame);
+    gameMenu->addAction(loadAction);
+
+    // 添加分隔线
+    gameMenu->addSeparator();
+
+    // 暂停
+    QAction *togglePause = new QAction(tr("暂停/继续"), this);
+    connect(togglePause, &QAction::triggered, this, &MainWindow::togglePause);
+    gameMenu->addAction(togglePause);
+
+    gameMenu->addSeparator();
+
+    // 退出游戏动作
+    QAction *exitAction = new QAction(tr("退出"), this);
+    connect(exitAction, &QAction::triggered, this, &QMainWindow::close);
+    gameMenu->addAction(exitAction);
+}
+
+// 保存游戏
+void MainWindow::onSaveGame()
+{
+    //在存档、读档期间，操作暂停
+    isPaused = true;
+    for(Character* c: characters){
+        c->isPaused = true;
+    }
+
+    if (characters.isEmpty()) {
+        QMessageBox::warning(this, tr("保存游戏"), tr("没有可用的角色"));
+        return;
+    }
+
+    QString filename = QFileDialog::getSaveFileName(this,
+                                                    tr("保存游戏"),
+                                                    QDir::currentPath(),
+                                                    tr("连连看存档 (*.lksav)"));
+    if (!filename.isEmpty()) {
+        if (!filename.endsWith(".lksav")) {
+            filename += ".lksav";
+        }
+
+        // 获取第一个角色
+        Character* character = characters.first();
+
+        // 获取角色的分数对象
+        Score* score = character->getCharacterScore();
+
+        if (character && score) {
+            if (saveManager.saveGame(filename, *gameMap, *character, *score, countdownTime)) {
+                QMessageBox::information(this, tr("保存游戏"), tr("游戏已成功保存!"));
+            }
+        } else {
+            QMessageBox::warning(this, tr("保存游戏"), tr("无法获取游戏状态，保存失败"));
+        }
+    }
+
+    isPaused = false;
+    for(Character* c: characters){
+        c->isPaused = false;
+    }
+}
+
+// 加载游戏
+void MainWindow::onLoadGame()
+{
+    isPaused = true;
+    for(Character* c: characters){
+        c->isPaused = true;
+    }
+
+    if (characters.isEmpty()) {
+        QMessageBox::warning(this, tr("加载游戏"), tr("没有可用的角色"));
+        return;
+    }
+
+    QString filename = QFileDialog::getOpenFileName(this,
+                                                    tr("加载游戏"),
+                                                    QDir::currentPath(),
+                                                    tr("连连看存档 (*.lksav)"));
+    if (!filename.isEmpty()) {
+        // 获取第一个角色
+        Character* character = characters.first();
+
+        // 获取角色的分数对象
+        Score* score = character->getCharacterScore();
+
+        if (character && score) {
+            if (saveManager.loadGame(filename, *gameMap, *character, *score, countdownTime)) {
+                QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
+
+                // 更新倒计时显示
+                countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+
+                // 可能需要更新其他UI元素
+                // ...
+            }
+        } else {
+            QMessageBox::warning(this, tr("加载游戏"), tr("无法初始化游戏状态，加载失败"));
+        }
+    }
+
+    isPaused = false;
+    for(Character* c: characters){
+        c->isPaused = false;
+    }
+}
+
 
 void MainWindow::showGameOverDialog() {
     for (Character* c : characters) {

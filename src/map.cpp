@@ -113,8 +113,9 @@ void Map::addToScene()
     for (int i = 0; i < m_rows; i++) {
         for (int j = 0; j < m_cols; j++) {
             int typeId = m_map[i][j];
+            if(typeId == -1) continue;
             QPixmap sprite = getSpriteByType(typeId);
-            if (sprite.isNull()) continue;
+            if(sprite.isNull()) continue;
 
             QPointF pos(offsetX + j * spacing,
                         offsetY + i * spacing);
@@ -128,6 +129,25 @@ void Map::addToScene()
         }
     }
 }
+
+// 读档设置地图数据
+void Map::setMapData(const QVector<QVector<int>>& newMapData)
+{
+    // 首先清理现有的箱子对象，避免内存泄漏
+    qDeleteAll(m_boxes);
+    m_boxes.clear();
+
+    // 复制新的地图数据
+    m_map = newMapData;
+    if (m_map.isEmpty() || m_map[0].isEmpty()) {
+        qWarning() << "地图数据未初始化，无法创建箱子";    // 确保地图数据已初始化
+        return;
+    }
+
+    // 根据新的地图数据重新初始化箱子
+    addToScene();
+}
+
 
 // ================= 路径判定 =================
 

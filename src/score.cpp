@@ -30,6 +30,11 @@ void Score::reset()
     updateText();
 }
 
+void Score::setScore(int data){
+    score = data;
+    updateText();
+};
+
 int Score::getScore() const
 {
     return score;

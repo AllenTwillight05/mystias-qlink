@@ -39,6 +39,11 @@ public:
     QVector<QPoint>  m_pathCells;
     QVector<QPointF> m_pathPixels;
 
+    // 获取地图数据的常量引用（避免拷贝开销）
+    const QVector<QVector<int>>& getMapData() const { return m_map; };
+    // 设置地图数据（使用常量引用传递，避免拷贝开销）
+    void setMapData(const QVector<QVector<int>>& newMapData);
+
 private:
     int m_rows;             // 行数
     int m_cols;             // 列数
