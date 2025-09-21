@@ -42,13 +42,13 @@ MainWindow::MainWindow(QWidget *parent)
     //Score* score1 = new Score(character1);
 
     // === 创建角色2（IJKL控制） ===
-    // Character* character2 = new Character(":/assets/sprites1.png", this);
-    // character2->setPos(mapWidth/5*4, mapHeight/5*4);
-    // character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
-    // character2->setGameMap(gameMap);
-    // scene->addItem(character2);
-    // connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
-    // characters.append(character2);
+    Character* character2 = new Character(":/assets/sprites1.png", this);
+    character2->setPos(mapWidth/5*4, mapHeight/5*4);
+    character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
+    character2->setGameMap(gameMap);
+    scene->addItem(character2);
+    connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
+    characters.append(character2);
 
 
     // 倒计时
@@ -237,7 +237,6 @@ void MainWindow::createMenu()
 // 保存游戏
 void MainWindow::onSaveGame()
 {
-    //在存档、读档期间，操作暂停
     isPaused = true;
     for(Character* c: characters){
         c->isPaused = true;
@@ -257,18 +256,9 @@ void MainWindow::onSaveGame()
             filename += ".lksav";
         }
 
-        // 获取第一个角色
-        Character* character = characters.first();
-
-        // 获取角色的分数对象
-        Score* score = character->getCharacterScore();
-
-        if (character && score) {
-            if (saveManager.saveGame(filename, *gameMap, *character, *score, countdownTime)) {
-                QMessageBox::information(this, tr("保存游戏"), tr("游戏已成功保存!"));
-            }
-        } else {
-            QMessageBox::warning(this, tr("保存游戏"), tr("无法获取游戏状态，保存失败"));
+        // 直接传递角色列表
+        if (saveManager.saveGame(filename, *gameMap, characters, countdownTime)) {
+            QMessageBox::information(this, tr("保存游戏"), tr("游戏已成功保存!"));
         }
     }
 
@@ -296,24 +286,17 @@ void MainWindow::onLoadGame()
                                                     QDir::currentPath(),
                                                     tr("连连看存档 (*.lksav)"));
     if (!filename.isEmpty()) {
-        // 获取第一个角色
-        Character* character = characters.first();
+        // 直接传递角色列表
+        if (saveManager.loadGame(filename, *gameMap, characters, countdownTime)) {
+            QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
 
-        // 获取角色的分数对象
-        Score* score = character->getCharacterScore();
+            // 更新倒计时显示
+            countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 
-        if (character && score) {
-            if (saveManager.loadGame(filename, *gameMap, *character, *score, countdownTime)) {
-                QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
-
-                // 更新倒计时显示
-                countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
-
-                // 可能需要更新其他UI元素
-                // ...
+            // 更新每个角色的分数显示
+            for (Character* character : characters) {
+                character->getCharacterScore()->updateText();
             }
-        } else {
-            QMessageBox::warning(this, tr("加载游戏"), tr("无法初始化游戏状态，加载失败"));
         }
     }
 

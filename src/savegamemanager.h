@@ -14,10 +14,16 @@ class SaveGameManager : public QObject
     Q_OBJECT
 public:
     explicit SaveGameManager(QObject *parent = nullptr);
-    // 保存游戏
-    bool saveGame(const QString &filename, Map &gameMap, Character &character, Score &score, int countdownTime);
-    // 加载游戏
-    bool loadGame(const QString &filename, Map &gameMap, Character &character, Score &score, int& countdownTime);
+
+    bool saveGame(const QString &filename,
+                  Map &gameMap,
+                  QVector<Character*> &characters, // 改为接收角色列表
+                  int countdownTime);
+
+    bool loadGame(const QString &filename,
+                  Map &gameMap,
+                  QVector<Character*> &characters, // 改为接收角色列表
+                  int &countdownTime);
 
 signals:
     void errorOccurred(const QString &message);
@@ -30,23 +36,23 @@ private:
     struct GameSaveData
     {
         QVector<QVector<int>> mapData;
-        QPointF characterPos;
-        int score;
+        QVector<QPointF> characterPositions;  // 所有角色的位置
+        QVector<int> scores;                  // 所有角色的分数;
         int countdownTime;
 
         // 序列化操作，重载入和出运算符
         friend QDataStream &operator<<(QDataStream &out, const GameSaveData &data) {
             out << data.mapData;
-            out << data.characterPos;
-            out << data.score;
+            out << data.characterPositions;
+            out << data.scores;
             out << data.countdownTime;
             return out;
         }
 
         friend QDataStream &operator>>(QDataStream &in, GameSaveData &data) {
             in >> data.mapData;
-            in >> data.characterPos;
-            in >> data.score;
+            in >> data.characterPositions;
+            in >> data.scores;
             in >> data.countdownTime;
             return in;
         }

@@ -12,8 +12,8 @@ public:
     void reset();                   // 重置分数
     void setScore(int data);        // 设置分数
     int getScore() const;           // 获取当前分数
+    void updateText();
 
 private:
     int score;
-    void updateText();
 };

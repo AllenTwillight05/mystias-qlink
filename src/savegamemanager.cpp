@@ -12,10 +12,10 @@ const qint32 SaveGameManager::SAVE_FILE_VERSION = 1;
 
 SaveGameManager::SaveGameManager(QObject* parent) : QObject(parent) {}
 
+// savegamemanager.cpp
 bool SaveGameManager::saveGame(const QString &filename,
                                Map &gameMap,
-                               Character &character,
-                               Score &score,
+                               QVector<Character*> &characters, // 改为接收角色列表
                                int countdownTime)
 {
     QFile file(filename);
@@ -26,8 +26,13 @@ bool SaveGameManager::saveGame(const QString &filename,
 
     GameSaveData saveData;
     saveData.mapData = gameMap.getMapData();
-    saveData.characterPos = character.getPosition();
-    saveData.score = score.getScore();
+
+    // 保存所有角色的位置和分数
+    for (Character* character : characters) {
+        saveData.characterPositions.append(character->getPosition());
+        saveData.scores.append(character->getCharacterScore()->getScore());
+    }
+
     saveData.countdownTime = countdownTime;
 
     QDataStream out(&file);
@@ -35,7 +40,7 @@ bool SaveGameManager::saveGame(const QString &filename,
 
     out << SAVE_FILE_MAGIC;
     out << SAVE_FILE_VERSION;
-    out << saveData; // 使用重载的运算符
+    out << saveData;
 
     file.close();
     return true;
@@ -43,9 +48,8 @@ bool SaveGameManager::saveGame(const QString &filename,
 
 bool SaveGameManager::loadGame(const QString &filename,
                                Map &gameMap,
-                               Character &character,
-                               Score &score,
-                               int& countdownTime)
+                               QVector<Character*> &characters, // 改为接收角色列表
+                               int &countdownTime)
 {
     QFile file(filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -73,13 +77,27 @@ bool SaveGameManager::loadGame(const QString &filename,
     }
 
     GameSaveData saveData;
-    in >> saveData; // 使用重载的运算符
+    in >> saveData;
 
     file.close();
 
+    // 恢复地图
     gameMap.setMapData(saveData.mapData);
-    character.setPosition(saveData.characterPos);
-    score.setScore(saveData.score);
+
+    // 检查角色数量是否匹配
+    if (characters.size() != saveData.characterPositions.size() ||
+        characters.size() != saveData.scores.size()) {
+        emit errorOccurred(tr("存档中的角色数量与当前游戏不匹配"));
+        return false;
+    }
+
+    // 恢复角色状态
+    for (int i = 0; i < characters.size(); ++i) {
+        characters[i]->setPosition(saveData.characterPositions[i]);
+        characters[i]->getCharacterScore()->setScore(saveData.scores[i]);
+    }
+
+    // 恢复倒计时
     countdownTime = saveData.countdownTime;
 
     return true;
