@@ -30,8 +30,8 @@ signals:
 
 private:
     // 文件标识和版本常量
-    static const quint32 SAVE_FILE_MAGIC;   // 文件魔数
-    static const qint32 SAVE_FILE_VERSION;  // 版本号
+    static const quint32 QLINK_FILE_SIGNATURE = 0x514C5341; // "QLSA",QLinkSaveArchive   // 文件魔数
+    static const qint32 SAVE_FILE_VERSION = 1;  // 版本号
 
     struct GameSaveData
     {
@@ -41,12 +41,12 @@ private:
         int countdownTime;
 
         // 序列化操作，重载入和出运算符
-        friend QDataStream &operator<<(QDataStream &out, const GameSaveData &data) {
+        friend QDataStream &operator<<(QDataStream &out, const GameSaveData &data) {    //QDataStream类似iostream但处理Qt对象，二进制格式
             out << data.mapData;
             out << data.characterPositions;
             out << data.scores;
             out << data.countdownTime;
-            return out;
+            return out;     //返回流对象，用于链式操作
         }
 
         friend QDataStream &operator>>(QDataStream &in, GameSaveData &data) {

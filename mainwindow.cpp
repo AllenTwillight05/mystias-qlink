@@ -9,11 +9,11 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QMenuBar>       // 新增：菜单栏
-#include <QMenu>          // 新增：菜单
-#include <QAction>        // 新增：菜单动作
-#include <QFileDialog>    // 新增：文件对话框
-#include <QMessageBox>    // 新增：消息框
+#include <QMenuBar>       // 菜单栏
+#include <QMenu>          // 菜单
+#include <QAction>        // 菜单动作
+#include <QFileDialog>    // 文件对话框
+#include <QMessageBox>    // 消息框
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
     countdownTimer->start(1000);
 
-    // 分数
+    // 单人模式右上角分数，现已弃用
     // score = new Score();
     // scene->addItem(score);
     // score->setPos(mapWidth - 160, 20);
@@ -70,6 +70,7 @@ MainWindow::MainWindow(QWidget *parent)
     // score->setFont(QFont("Consolas", 20, QFont::Bold));
 
     // 连接存档管理器的错误信号
+    // 注意saveManager是对象实例，所以connect中需要取地址
     connect(&saveManager, &SaveGameManager::errorOccurred, this, [this](const QString &message) {
         QMessageBox::warning(this, tr("存档错误"), message);
     });
@@ -148,7 +149,6 @@ void MainWindow::handleActivation(Box* box, Character* sender)
 {
     if (!box) return;
 
-    // 保留你原来的逻辑
     if (!lastActivatedBox) {
         lastActivatedBox = box;
         box->activate();
@@ -237,31 +237,37 @@ void MainWindow::createMenu()
 // 保存游戏
 void MainWindow::onSaveGame()
 {
+    //先暂停
     isPaused = true;
     for(Character* c: characters){
         c->isPaused = true;
     }
 
+    //安全检查
     if (characters.isEmpty()) {
-        QMessageBox::warning(this, tr("保存游戏"), tr("没有可用的角色"));
+        QMessageBox::warning(this, tr("保存游戏"), tr("没有可用的角色"));  //warning,系统警告对话框
         return;
     }
 
-    QString filename = QFileDialog::getSaveFileName(this,
-                                                    tr("保存游戏"),
-                                                    QDir::currentPath(),
-                                                    tr("连连看存档 (*.lksav)"));
+    //获取文件名(文件对话框，输入保存位置和文件名)
+    QString filename = QFileDialog::getSaveFileName(this,                        //父窗口
+                                                    tr("保存游戏"),               //tr()国际化翻译函数，保持和系统语言一致，但暂时未编写.ts翻译文件；此行为对话框标题
+                                                    QDir::currentPath(),         //默认目录
+                                                    tr("连连看存档 (*.lksav)"));  //文件过滤器，格式：描述 (*.扩展名)
+    //写入文件
     if (!filename.isEmpty()) {
+        //文件名自动补齐
         if (!filename.endsWith(".lksav")) {
             filename += ".lksav";
         }
 
         // 直接传递角色列表
         if (saveManager.saveGame(filename, *gameMap, characters, countdownTime)) {
-            QMessageBox::information(this, tr("保存游戏"), tr("游戏已成功保存!"));
+            QMessageBox::information(this, tr("保存游戏"), tr("游戏已成功保存!")); //information,系统信息对话框
         }
     }
 
+    //解除暂停
     isPaused = false;
     for(Character* c: characters){
         c->isPaused = false;

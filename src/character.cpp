@@ -19,6 +19,7 @@ Character::Character(const QString& spritePath, QObject* parent)
     setZValue(2);
 
     // 移动计时器 (30 FPS)
+    // 注意movementTimer和animationTimer都是指针，所以直接传入connect合法
     movementTimer = new QTimer(this);
     connect(movementTimer, &QTimer::timeout, this, &Character::updateMovement);
     movementTimer->start(33);

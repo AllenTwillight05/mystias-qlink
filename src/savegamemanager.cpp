@@ -6,10 +6,6 @@
 #include <QDataStream>
 #include <QMessageBox>
 
-// 在cpp文件中定义静态常量
-const quint32 SaveGameManager::SAVE_FILE_MAGIC = 0x4C4B5341; // "LKSA", QLinkSaveArchive
-const qint32 SaveGameManager::SAVE_FILE_VERSION = 1;
-
 SaveGameManager::SaveGameManager(QObject* parent) : QObject(parent) {}
 
 // savegamemanager.cpp
@@ -35,12 +31,12 @@ bool SaveGameManager::saveGame(const QString &filename,
 
     saveData.countdownTime = countdownTime;
 
-    QDataStream out(&file);
+    QDataStream out(&file); //类似std::ofstream out("file.txt");out <<...;
     out.setVersion(QDataStream::Qt_5_15);
 
-    out << SAVE_FILE_MAGIC;
+    out << QLINK_FILE_SIGNATURE;
     out << SAVE_FILE_VERSION;
-    out << saveData;
+    out << saveData;    //已经重载过<<运算符，故不用把saveData.mapData等一行行拆开写    //由于返回了重载时返回了out，这里也可以三行并一行写
 
     file.close();
     return true;
@@ -62,7 +58,7 @@ bool SaveGameManager::loadGame(const QString &filename,
 
     quint32 magic;
     in >> magic;
-    if (magic != SAVE_FILE_MAGIC) {
+    if (magic != QLINK_FILE_SIGNATURE) {
         emit errorOccurred(tr("这不是有效的连连看存档文件"));
         file.close();
         return false;
