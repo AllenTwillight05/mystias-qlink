@@ -4,6 +4,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QVector>
+#include <QTimer>
 #include "savegamemanager.h"
 
 class Character;
@@ -11,6 +12,9 @@ class Box;
 class Map;
 class Score;
 class PowerUpManager;
+class StartMenu;
+class QGraphicsTextItem;
+class QGraphicsPathItem;
 
 class MainWindow : public QMainWindow
 {
@@ -27,47 +31,55 @@ protected:
 
 private slots:
     void updateCountdown();
-    void handleActivation(Box* box, Character* sender);   // 角色碰到 Box 后调用
+    void handleActivation(Box* box, Character* sender);
 
     void onSaveGame();
     void onLoadGame();
     void togglePause();
 
 private:
-    void setupScene();
-    void showGameOverDialog();
-    void resetToTitleScreen();
+    // helper functions
+    void setupSceneDefaults(QGraphicsScene *s);
     void createMenu();
+    void startGame(int playerCount);
+    void cleanupGameResources();
+    void resetToTitleScreen();
+    void showGameOverDialog();
 
 private:
-    // 图形相关
-    QGraphicsScene *scene;
-    QGraphicsView *view;
+    // 主菜单（作为 MainWindow 的子控件并一直保留）
+    StartMenu* startMenu;
 
-    QVector<Character*> characters;  // 所有角色数组
+    // 懒创建的图形元素
+    QGraphicsScene *scene = nullptr;
+    QGraphicsView *view = nullptr;
 
-    // 地图相关
+    QVector<Character*> characters;
+
+    // 地图与网格
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
     int yNum = 4, xNum = 3, typeNum = 3;
-    Map* gameMap;
+    Map* gameMap = nullptr;
 
-    // 消除相关
+    // 交互相关
     Box* lastActivatedBox = nullptr;
     QGraphicsPathItem* currentPathItem = nullptr;
 
-    // 倒计时相关
-    int initialCountdownTime = 60;     // 初始倒计时
-    int countdownTime;
-    QGraphicsTextItem* countdownText;
-    QTimer* countdownTimer;
-    bool isPaused;
+    // 倒计时
+    int initialCountdownTime = 60;
+    int countdownTime = 0;
+    QGraphicsTextItem* countdownText = nullptr;
+    QTimer* countdownTimer = nullptr;
+    bool isPaused = false;
 
-    // 分数相关
-    Score* score;
+    // 分数
+    Score* score = nullptr;
 
     // 存档管理
     SaveGameManager saveManager;
-    // 道具
-    PowerUpManager* powerUpManager;
+
+    // 道具管理
+    PowerUpManager* powerUpManager = nullptr;
+    QTimer* powerUpSpawnTimer = nullptr;
 };

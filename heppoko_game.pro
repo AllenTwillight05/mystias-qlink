@@ -37,7 +37,8 @@ SOURCES += main.cpp \
            src/map.cpp \
            src/powerupmanager.cpp \
            src/savegamemanager.cpp \
-           src/score.cpp
+           src/score.cpp \
+           src/startmenu.cpp
 
 HEADERS += mainwindow.h \
            src/character.h \
@@ -47,7 +48,8 @@ HEADERS += mainwindow.h \
            src/map.h \
            src/powerupmanager.h \
            src/savegamemanager.h \
-           src/score.h
+           src/score.h \
+           src/startmenu.h
 
 
 RESOURCES += resources/resources.qrc

@@ -41,6 +41,7 @@ Map::~Map()
     m_boxes.clear();   // 只是清空容器，不销毁 Box
     m_tools.clear();
     delete[] disOrder;
+    disOrder = nullptr;
 }
 
 // ================= 工具函数 =================

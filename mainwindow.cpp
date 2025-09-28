@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "startmenu.h"
 #include "character.h"
 #include "map.h"
 #include "score.h"
@@ -6,68 +7,131 @@
 #include "powerupmanager.h"
 
 #include <QTimer>
-#include <QDialog>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QRandomGenerator>
+#include <QGraphicsPixmapItem>
+#include <QGraphicsTextItem>
+#include <QPainterPath>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QMenuBar>       // 菜单栏
-#include <QMenu>          // 菜单
-#include <QAction>        // 菜单动作
-#include <QFileDialog>    // 文件对话框
-#include <QMessageBox>    // 消息框
-#include <QRandomGenerator>
+#include <QDir>
+#include <QKeyEvent>
+#include <QPainter>
+#include <QPen>
+#include <QDebug>
+#include <QDialog>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
+    startMenu(new StartMenu(this)),
     scene(nullptr),
     view(nullptr),
     gameMap(nullptr),
+    countdownText(nullptr),
     countdownTimer(new QTimer(this)),
     isPaused(false),
-    saveManager(this)
+    score(nullptr),
+    saveManager(this),
+    powerUpManager(nullptr),
+    powerUpSpawnTimer(nullptr),
+    currentPathItem(nullptr)
 {
-    setupScene();
+    setWindowTitle("Mystia’s Ingredient Quest");
+    resize(1200, 675);
+
+    // 初始显示主菜单（StartMenu 永远存在）
+    setCentralWidget(startMenu);
+
+    // 连接主菜单信号
+    connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
+    connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
+}
+
+MainWindow::~MainWindow()
+{
+    // 彻底清理游戏资源（StartMenu 由 parent 自动删除）
+    cleanupGameResources();
+}
+
+/* ---------------------- 辅助：场景默认设置 ---------------------- */
+void MainWindow::setupSceneDefaults(QGraphicsScene *s)
+{
+    if (!s) return;
+    s->setSceneRect(0, 0, mapWidth, mapHeight);
+    s->setBackgroundBrush(QColorConstants::Svg::antiquewhite);
+
+    QPixmap bgPixmap(":/assets/background.jpg");
+    if (!bgPixmap.isNull()) {
+        QGraphicsPixmapItem *bgItem = s->addPixmap(bgPixmap);
+        bgItem->setZValue(-100);
+    }
+}
+
+/* ---------------------- 开始游戏：创建 scene/view/map/角色 ---------------------- */
+void MainWindow::startGame(int playerCount)
+{
+    // 如果已有游戏在运行，先清理
+    cleanupGameResources();
+
+    // 新建 scene 和 view（把 scene 的父对象设为 this 便于管理）
+    scene = new QGraphicsScene(this);
+    setupSceneDefaults(scene);
+
+    view = new QGraphicsView(scene, this);
+    view->setRenderHint(QPainter::Antialiasing);
+    view->setRenderHint(QPainter::TextAntialiasing);
+    view->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+
+    // 切换 central widget（替换 startMenu）
+    setCentralWidget(view);
+
+    // 创建菜单（会先清空旧菜单）
     createMenu();
 
     // 初始化道具管理器
     powerUpManager = new PowerUpManager(this);
 
-    // 初始化地图
+    // 创建地图并加入场景
     gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
     gameMap->addToScene();
 
-    // 初始化道具管理器（需要在地图创建后调用）
+    // 初始化道具管理器（依赖 map）
     powerUpManager->initialize(gameMap, scene);
 
-    // === 创建角色1（WASD 控制） ===
-    Character* character1 = new Character(":/assets/sprites0.png", this);
-    character1->setPos(mapWidth/5, mapHeight/5);
-    character1->setControls({ Qt::Key_W, Qt::Key_S, Qt::Key_A, Qt::Key_D });    //Qt::Key_W等本质是int
-    character1->setGameMap(gameMap);
-    scene->addItem(character1);
-    connect(character1, &Character::collidedWithBox, this, &MainWindow::handleActivation);
-    characters.append(character1);
-    //Score* score1 = new Score(character1);
+    // 创建角色
+    if (playerCount >= 1) {
+        Character* character1 = new Character(":/assets/sprites0.png", this);
+        character1->setPos(mapWidth/5, mapHeight/5);
+        character1->setControls({ Qt::Key_W, Qt::Key_S, Qt::Key_A, Qt::Key_D });
+        character1->setGameMap(gameMap);
+        scene->addItem(character1);
+        connect(character1, &Character::collidedWithBox, this, &MainWindow::handleActivation);
+        characters.append(character1);
+    }
+    if (playerCount >= 2) {
+        Character* character2 = new Character(":/assets/sprites1.png", this);
+        character2->setPos(mapWidth/5*4, mapHeight/5*4);
+        character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
+        character2->setGameMap(gameMap);
+        scene->addItem(character2);
+        connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
+        characters.append(character2);
+    }
 
-    // === 创建角色2（IJKL控制） ===
-    Character* character2 = new Character(":/assets/sprites1.png", this);
-    character2->setPos(mapWidth/5*4, mapHeight/5*4);
-    character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
-    character2->setGameMap(gameMap);
-    scene->addItem(character2);
-    connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
-    characters.append(character2);
-
-    // 创建道具
-    // 添加定时器定期生成道具
-    powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3)+1);
-    QTimer* powerUpSpawnTimer = new QTimer(this);
+    // 道具生成定时器（先生成一个）
+    powerUpSpawnTimer = new QTimer(this);
     connect(powerUpSpawnTimer, &QTimer::timeout, this, [this]() {
-        powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3)+1); // 每15秒生成一个道具
+        if (powerUpManager) powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3) + 1);
     });
+    if (powerUpManager) powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3) + 1);
     powerUpSpawnTimer->start(15000);
 
-    // 倒计时
+    // 倒计时文本
     countdownTime = initialCountdownTime;
     countdownText = scene->addText(QString("Time：%1").arg(countdownTime));
     countdownText->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
@@ -75,53 +139,110 @@ MainWindow::MainWindow(QWidget *parent)
     countdownText->setZValue(100);
     countdownText->setPos(20, 20);
 
-    connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
+    // 连接倒计时（防止重复连接）
+    connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown, Qt::UniqueConnection);
     countdownTimer->start(1000);
 
-    // 单人模式右上角分数，现已弃用
-    // score = new Score();
-    // scene->addItem(score);
-    // score->setPos(mapWidth - 160, 20);
-    // score->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
-    // score->setFont(QFont("Consolas", 20, QFont::Bold));
-
-    // 连接存档管理器的错误信号
-    // 注意saveManager是对象实例，所以connect中需要取地址
-    connect(&saveManager, &SaveGameManager::errorOccurred, this, [this](const QString &message) {
-        QMessageBox::warning(this, tr("存档错误"), message);
-    });
-
-    setWindowTitle("Mystia’s Ingredient Quest");
-    resize(1200, 675);
+    isPaused = false;
 }
 
-MainWindow::~MainWindow() {}
-
-void MainWindow::setupScene()
+/* ---------------------- 清理游戏资源，保证顺序与安全 ---------------------- */
+void MainWindow::cleanupGameResources()
 {
-    scene = new QGraphicsScene(this);
-    view = new QGraphicsView(scene);
-    // scene->setItemIndexMethod(QGraphicsScene::NoIndex); // 禁用BSP树，使用堆叠顺序
-    scene->setSceneRect(0, 0, mapWidth, mapHeight);
-    scene->setBackgroundBrush(QColorConstants::Svg::antiquewhite);
-
-    QPixmap bgPixmap(":/assets/background.jpg");
-    if (!bgPixmap.isNull()) {
-        QGraphicsPixmapItem *bgItem = scene->addPixmap(bgPixmap);
-        bgItem->setZValue(-100);
+    // 停止倒计时
+    if (countdownTimer) {
+        countdownTimer->stop();
+        QObject::disconnect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
     }
 
-    setCentralWidget(view);
+    // 停止并删除道具生成定时器
+    if (powerUpSpawnTimer) {
+        powerUpSpawnTimer->stop();
+        delete powerUpSpawnTimer;
+        powerUpSpawnTimer = nullptr;
+    }
+
+    // 停停 hint 并删除道具管理器
+    if (powerUpManager) {
+        powerUpManager->deactivateHint();
+        delete powerUpManager;
+        powerUpManager = nullptr;
+    }
+
+    // 删除地图（Map 的析构应处理其 own items）
+    if (gameMap) {
+        delete gameMap;
+        gameMap = nullptr;
+    }
+
+    // 删除并停止角色
+    // for (Character* c : characters) {
+    //     if (c) {
+    //         c->stopTimers(); // 防止内部计时器还在回调
+    //         if (scene && scene->items().contains(c)) scene->removeItem(c);
+    //         delete c;
+    //     }
+    // }
+    characters.clear();
+
+    // 删除倒计时文本
+    if (countdownText) {
+        if (scene && scene->items().contains(countdownText)) scene->removeItem(countdownText);
+        delete countdownText;
+        countdownText = nullptr;
+    }
+
+    // 删除当前绘制路径
+    if (currentPathItem) {
+        if (scene && scene->items().contains(currentPathItem)) scene->removeItem(currentPathItem);
+        delete currentPathItem;
+        currentPathItem = nullptr;
+    }
+
+    // 删除 scene 中残留的 items（谨慎）
+    // if (scene) {
+    //     QList<QGraphicsItem*> items = scene->items();
+    //     for (QGraphicsItem* it : items) {
+    //         scene->removeItem(it);
+    //         delete it;
+    //     }
+    // }
+
+    // 从 central widget 中移除 view（如果存在）
+    if (view && centralWidget() == view) {
+        setCentralWidget(nullptr);
+    }
+
+    // 删除 view 与 scene（按先后顺序）
+    if (view) {
+        delete view;
+        view = nullptr;
+    }
+    if (scene) {
+        delete scene;
+        scene = nullptr;
+    }
+
+    // 清空菜单，避免重复项
+    menuBar()->clear();
 }
 
+/* ---------------------- 回到主菜单 ---------------------- */
+void MainWindow::resetToTitleScreen()
+{
+    cleanupGameResources();
+
+    // 切回 startMenu（它是 this 的子控件并一直存在）
+    setCentralWidget(startMenu);
+}
+
+/* ---------------------- 输入事件转发 ---------------------- */
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    // 添加暂停快捷键（空格键）
     if (event->key() == Qt::Key_Space) {
         togglePause();
-        return;  // 避免传递给角色
+        return;
     }
-
     for (Character* c : characters) {
         c->handleKeyPress(event);
     }
@@ -134,6 +255,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     }
 }
 
+/* ---------------------- 倒计时 ---------------------- */
 void MainWindow::updateCountdown()
 {
     if (isPaused) return;
@@ -145,46 +267,37 @@ void MainWindow::updateCountdown()
         showGameOverDialog();
         return;
     }
-    countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+    if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 }
 
-void MainWindow::addCountdownTime(int seconds){
+void MainWindow::addCountdownTime(int seconds)
+{
     countdownTime += seconds;
-    countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+    if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 }
 
-void MainWindow::togglePause(){
+void MainWindow::togglePause()
+{
     isPaused = !isPaused;
-    if(isPaused){
-        for(Character* c: characters){
-            c->isPaused = true;
-        }
-    }else{
-        for(Character* c: characters){
-            c->isPaused = false;
-        }
-    }
+    for (Character* c : characters) c->isPaused = isPaused;
 }
 
+/* ---------------------- 角色与 box 交互（保留你的逻辑） ---------------------- */
 void MainWindow::handleActivation(Box* box, Character* sender)
 {
     if (!box) return;
 
-    // 检查是否是道具盒子（类型 >= 1）
+    // 道具类型处理
     if (box->toolType >= 1) {
-        // 根据道具类型执行相应效果
         switch (box->toolType) {
-        case 1: { // +1s道具 - 注意这里添加了花括号
+        case 1: {
             countdownTime += 30;
-            countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
-
-            // 可以添加视觉反馈
+            if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
             QGraphicsTextItem* feedback = scene->addText("+1s");
             feedback->setDefaultTextColor(Qt::green);
             feedback->setFont(QFont("Consolas", 16, QFont::Bold));
             feedback->setZValue(100);
             feedback->setPos(sender->getPosition());
-
             QTimer::singleShot(1000, [feedback]() {
                 if (feedback->scene()) {
                     feedback->scene()->removeItem(feedback);
@@ -193,19 +306,13 @@ void MainWindow::handleActivation(Box* box, Character* sender)
             });
             break;
         }
-        case 2: { // Shuffle道具 - 注意这里添加了花括号
-            // 执行重排
-            if (gameMap) {
-                gameMap->shuffleBoxes();
-            }
-
-            // 视觉反馈
+        case 2: {
+            if (gameMap) gameMap->shuffleBoxes();
             QGraphicsTextItem* feedback = scene->addText("Shuffle!");
             feedback->setDefaultTextColor(Qt::blue);
             feedback->setFont(QFont("Consolas", 16, QFont::Bold));
             feedback->setZValue(100);
             feedback->setPos(sender->getPosition());
-
             QTimer::singleShot(1000, [feedback]() {
                 if (feedback->scene()) {
                     feedback->scene()->removeItem(feedback);
@@ -214,18 +321,13 @@ void MainWindow::handleActivation(Box* box, Character* sender)
             });
             break;
         }
-        case 3: { // Hint道具
-            // 激活Hint效果
-            if (powerUpManager) {
-                powerUpManager->activateHint();
-            }
-
+        case 3: {
+            if (powerUpManager) powerUpManager->activateHint();
             QGraphicsTextItem* feedback = scene->addText("Hint!");
             feedback->setDefaultTextColor(Qt::yellow);
             feedback->setFont(QFont("Consolas", 16, QFont::Bold));
             feedback->setZValue(100);
             feedback->setPos(sender->getPosition());
-
             QTimer::singleShot(1000, [feedback]() {
                 if (feedback->scene()) {
                     feedback->scene()->removeItem(feedback);
@@ -234,18 +336,15 @@ void MainWindow::handleActivation(Box* box, Character* sender)
             });
             break;
         }
-        // 可以继续添加其他道具类型
         }
 
-        if (gameMap) {
-            gameMap->m_tools.removeOne(box);
-        }
-        // 移除道具盒子
-        scene->removeItem(box);
+        if (gameMap) gameMap->m_tools.removeOne(box);
+        if (scene) scene->removeItem(box);
         delete box;
         return;
     }
 
+    // 消除逻辑
     if (!lastActivatedBox) {
         lastActivatedBox = box;
         box->activate();
@@ -255,7 +354,6 @@ void MainWindow::handleActivation(Box* box, Character* sender)
     if (box == lastActivatedBox) return;
 
     if (gameMap->canConnect(lastActivatedBox, box)) {
-        // 消除逻辑
         lastActivatedBox->deactivate();
         box->deactivate();
         gameMap->m_map[lastActivatedBox->row][lastActivatedBox->col] = -1;
@@ -266,26 +364,26 @@ void MainWindow::handleActivation(Box* box, Character* sender)
         gameMap->m_boxes.removeOne(box);
         lastActivatedBox = nullptr;
 
-        sender->getCharacterScore()->increase(10); // 调用Character内部的分数对象
+        sender->getCharacterScore()->increase(10);
 
-        // 绘制路径
         const QVector<QPointF>& pts = gameMap->m_pathPixels;
-        if (pts.size() >= 2) {
+        if (pts.size() >= 2 && scene) {
             QPainterPath path(pts[0]);
-            for (int i = 1; i < pts.size(); ++i) {
-                path.lineTo(pts[i]);
-            }
+            for (int i = 1; i < pts.size(); ++i) path.lineTo(pts[i]);
             QPen pen(QColor(255, 223, 128), 10);
             pen.setJoinStyle(Qt::RoundJoin);
             pen.setCapStyle(Qt::RoundCap);
 
-            QGraphicsPathItem* lineItem =
-                gameMap->getScene()->addPath(path, pen);
+            QGraphicsPathItem* lineItem = scene->addPath(path, pen);
             lineItem->setZValue(-1);
+            currentPathItem = lineItem;
 
-            QTimer::singleShot(500, [scene = gameMap->getScene(), lineItem]() {
-                scene->removeItem(lineItem);
-                delete lineItem;
+            QTimer::singleShot(500, [this, lineItem]() {
+                if (lineItem && lineItem->scene()) {
+                    lineItem->scene()->removeItem(lineItem);
+                    delete lineItem;
+                    if (currentPathItem == lineItem) currentPathItem = nullptr;
+                }
             });
         }
     } else {
@@ -294,110 +392,81 @@ void MainWindow::handleActivation(Box* box, Character* sender)
         box->activate();
     }
 
-    if (!gameMap->isSolvable()) {
+    if (gameMap && !gameMap->isSolvable()) {
         showGameOverDialog();
     }
 }
 
-
-// 创建菜单
+/* ---------------------- 菜单（返回主菜单 / 退出程序 / 保存/加载 等） ---------------------- */
 void MainWindow::createMenu()
 {
+    menuBar()->clear();
+
     QMenu *gameMenu = menuBar()->addMenu(tr("选项"));
 
-    // 保存游戏动作
     QAction *saveAction = new QAction(tr("保存游戏"), this);
     connect(saveAction, &QAction::triggered, this, &MainWindow::onSaveGame);
     gameMenu->addAction(saveAction);
 
-    // 加载游戏动作
     QAction *loadAction = new QAction(tr("加载游戏"), this);
     connect(loadAction, &QAction::triggered, this, &MainWindow::onLoadGame);
     gameMenu->addAction(loadAction);
 
-    // 添加分隔线
     gameMenu->addSeparator();
 
-    // 暂停
     QAction *togglePause = new QAction(tr("暂停/继续"), this);
     connect(togglePause, &QAction::triggered, this, &MainWindow::togglePause);
     gameMenu->addAction(togglePause);
 
     gameMenu->addSeparator();
 
-    // 退出游戏动作
-    QAction *exitAction = new QAction(tr("退出"), this);
-    connect(exitAction, &QAction::triggered, this, &QMainWindow::close);
+    QAction *exitAction = new QAction(tr("返回主菜单"), this);
+    connect(exitAction, &QAction::triggered, this, [this]() { resetToTitleScreen(); });
     gameMenu->addAction(exitAction);
+
+    QAction *quitAction = new QAction(tr("退出程序"), this);
+    connect(quitAction, &QAction::triggered, this, &QMainWindow::close);
+    gameMenu->addAction(quitAction);
 }
 
-// 保存游戏
+/* ---------------------- 保存 / 加载（保留你原来的逻辑） ---------------------- */
 void MainWindow::onSaveGame()
 {
-    //先暂停
     isPaused = true;
-    for(Character* c: characters){
-        c->isPaused = true;
-    }
+    for (Character* c : characters) c->isPaused = true;
 
-    //安全检查
     if (characters.isEmpty()) {
-        QMessageBox::warning(this, tr("保存游戏"), tr("没有可用的角色"));  //warning,系统警告对话框
+        QMessageBox::warning(this, tr("保存游戏"), tr("没有可用的角色"));
         return;
     }
 
-    //获取文件名(文件对话框，输入保存位置和文件名)
-    QString filename = QFileDialog::getSaveFileName(this,                        //父窗口
-                                                    tr("保存游戏"),               //tr()国际化翻译函数，保持和系统语言一致，但暂时未编写.ts翻译文件；此行为对话框标题
-                                                    QDir::currentPath(),         //默认目录
-                                                    tr("连连看存档 (*.lksav)"));  //文件过滤器，格式：描述 (*.扩展名)
-    //写入文件
+    QString filename = QFileDialog::getSaveFileName(this, tr("保存游戏"), QDir::currentPath(), tr("连连看存档 (*.lksav)"));
     if (!filename.isEmpty()) {
-        //文件名自动补齐
-        if (!filename.endsWith(".lksav")) {
-            filename += ".lksav";
-        }
-
-        // 直接传递角色列表
+        if (!filename.endsWith(".lksav")) filename += ".lksav";
         if (saveManager.saveGame(filename, *gameMap, characters, countdownTime)) {
-            QMessageBox::information(this, tr("保存游戏"), tr("游戏已成功保存!")); //information,系统信息对话框
+            QMessageBox::information(this, tr("保存游戏"), tr("游戏已成功保存!"));
         }
     }
 
-    //解除暂停
     isPaused = false;
-    for(Character* c: characters){
-        c->isPaused = false;
-    }
+    for (Character* c : characters) c->isPaused = false;
 }
 
-// 加载游戏
 void MainWindow::onLoadGame()
 {
     isPaused = true;
-    for(Character* c: characters){
-        c->isPaused = true;
-    }
+    for (Character* c : characters) c->isPaused = true;
 
     if (characters.isEmpty()) {
         QMessageBox::warning(this, tr("加载游戏"), tr("没有可用的角色"));
         return;
     }
 
-    QString filename = QFileDialog::getOpenFileName(this,
-                                                    tr("加载游戏"),
-                                                    QDir::currentPath(),
-                                                    tr("连连看存档 (*.lksav)"));
+    QString filename = QFileDialog::getOpenFileName(this, tr("加载游戏"), QDir::currentPath(), tr("连连看存档 (*.lksav)"));
     if (!filename.isEmpty()) {
-
-        // 直接传递角色列表
         if (saveManager.loadGame(filename, *gameMap, characters, countdownTime)) {
             QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
-
-            // 更新倒计时显示
-            countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
-
-            // 更新每个角色的分数显示
+            if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
             for (Character* character : characters) {
                 character->getCharacterScore()->updateText();
             }
@@ -405,22 +474,18 @@ void MainWindow::onLoadGame()
     }
 
     isPaused = false;
-    for(Character* c: characters){
-        c->isPaused = false;
-    }
+    for (Character* c : characters) c->isPaused = false;
 }
 
-
-void MainWindow::showGameOverDialog() {
+/* ---------------------- Game Over 弹窗 ---------------------- */
+void MainWindow::showGameOverDialog()
+{
     for (Character* c : characters) {
         c->stopTimers();
     }
-    countdownTimer->stop();
+    if (countdownTimer) countdownTimer->stop();
 
-    // 停止Hint效果
-    if (powerUpManager) {
-        powerUpManager->deactivateHint();
-    }
+    if (powerUpManager) powerUpManager->deactivateHint();
 
     QDialog dlg(this);
     dlg.setWindowTitle("Game Over");
@@ -441,24 +506,4 @@ void MainWindow::showGameOverDialog() {
     dlg.exec();
 
     resetToTitleScreen();
-}
-
-void MainWindow::resetToTitleScreen() {
-    if (gameMap) {
-        delete gameMap;
-        gameMap = nullptr;
-    }
-
-    for (Character* c : characters) {
-        scene->removeItem(c);
-        delete c;
-    }
-    characters.clear();
-
-    scene->clear();
-
-    QGraphicsTextItem* titleText = scene->addText("Is the Order an Anago?");
-    titleText->setDefaultTextColor(Qt::black);
-    titleText->setScale(2.0);
-    titleText->setPos(200, 150);
 }
