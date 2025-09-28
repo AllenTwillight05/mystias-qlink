@@ -35,6 +35,7 @@ SOURCES += main.cpp \
            src/box.cpp \
            src/collision.cpp \
            src/map.cpp \
+           src/powerupmanager.cpp \
            src/savegamemanager.cpp \
            src/score.cpp
 
@@ -44,6 +45,7 @@ HEADERS += mainwindow.h \
            src/box.h \
            src/collision.h \
            src/map.h \
+           src/powerupmanager.h \
            src/savegamemanager.h \
            src/score.h
 

@@ -11,6 +11,7 @@ public:
     explicit Box(const QString &imagePath, QGraphicsScene *scene, const QPointF& characterPos);
     const qreal boxSize = 45;//用于碰撞检测的距离
     int boxType = 0;//0空，1-164为类型
+    int toolType = 0;//对于道具类箱子的类型管理，1为+s
     int row;
     int col;
 

@@ -10,6 +10,7 @@ class Character;
 class Box;
 class Map;
 class Score;
+class PowerUpManager;
 
 class MainWindow : public QMainWindow
 {
@@ -18,6 +19,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void addCountdownTime(int seconds);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -66,4 +68,6 @@ private:
 
     // 存档管理
     SaveGameManager saveManager;
+    // 道具
+    PowerUpManager* powerUpManager;
 };

@@ -2,7 +2,8 @@
 #include "box.h"
 #include "map.h"
 #include "score.h"
-#include "collision.h"   // 这里需要用到 Collision::willCollide 等函数
+#include "collision.h"
+#include "powerupmanager.h"
 
 #include <cmath>
 #include <limits>
@@ -118,6 +119,19 @@ void Character::updateMovement() {
             else
                 box->npreAct();
         }
+    }
+
+    if (gameMap) {
+        // 遍历所以tools
+        for (Box* box : gameMap->m_tools){
+            // 碰撞检测
+            if (Collision::willCollide(pos(), moveDirection, moveSpeed, box, box->boxSize)) {
+                //willCollide = true;
+                emit collidedWithBox(box, this);    // 声明事件发生,通知 MainWindow
+                break;
+            }
+        }
+
     }
 
     // 碰撞则停住

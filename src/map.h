@@ -31,9 +31,10 @@ public:
     bool canConnect(Box* a, Box* b);
     bool isSolvable();
 
-    QVector<Box*> m_boxes;            // 存储生成的 Box 实例
+    QVector<Box*> m_boxes;            // 存储生成的 Box实例
     QVector<QVector<int>> m_map;      // 存储类型编号矩阵（二维数组）
-    QGraphicsScene *m_scene;          // map 场景
+    QGraphicsScene *m_scene;          // map场景
+    QVector<Box*> m_tools;            // 存储生成的 tool类型 Box实例
 
     // 存储最近一次判定成功的路径（节点坐标）（网格/像素）
     QVector<QPoint>  m_pathCells;
@@ -43,6 +44,10 @@ public:
     const QVector<QVector<int>>& getMapData() const { return m_map; };
     // 设置地图数据（使用常量引用传递，避免拷贝开销）
     void setMapData(const QVector<QVector<int>>& newMapData);
+    int getRowCount(){ return m_rows; };
+    int getColCount(){ return m_cols; };
+    // 工具函数：坐标换算
+    QPointF cellCenterPx(int r, int c) const;
 
 private:
     int m_rows;             // 行数
@@ -60,7 +65,6 @@ private:
     QPixmap getSpriteByType(int typeId);
 
     // 工具函数：坐标换算
-    QPointF cellCenterPx(int r, int c) const;
     QVector<QPointF> cellsToScene(const QVector<QPoint>& cells) const;
 
     // 直连、一拐、二拐路径判定（返回路径点）

@@ -10,6 +10,7 @@
 class Box;
 class Map;
 class Score;
+class PowerUpManager;
 
 // 键位配置结构体
 struct ControlScheme {

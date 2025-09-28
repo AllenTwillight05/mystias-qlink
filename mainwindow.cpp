@@ -3,6 +3,7 @@
 #include "map.h"
 #include "score.h"
 #include "box.h"
+#include "powerupmanager.h"
 
 #include <QTimer>
 #include <QDialog>
@@ -27,9 +28,15 @@ MainWindow::MainWindow(QWidget *parent)
     setupScene();
     createMenu();
 
+    // 初始化道具管理器
+    powerUpManager = new PowerUpManager(this);
+
     // 初始化地图
     gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
     gameMap->addToScene();
+
+    // 初始化道具管理器（需要在地图创建后调用）
+    powerUpManager->initialize(gameMap, scene);
 
     // === 创建角色1（WASD 控制） ===
     Character* character1 = new Character(":/assets/sprites0.png", this);
@@ -50,6 +57,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
     characters.append(character2);
 
+    // 创建道具
+    // 添加定时器定期生成道具
+    powerUpManager->spawnPowerUp(1);
+    QTimer* powerUpSpawnTimer = new QTimer(this);
+    connect(powerUpSpawnTimer, &QTimer::timeout, this, [this]() {
+        powerUpManager->spawnPowerUp(1); // 每30秒生成一个+1s道具
+    });
+    powerUpSpawnTimer->start(30000);
 
     // 倒计时
     countdownTime = initialCountdownTime;
@@ -132,6 +147,11 @@ void MainWindow::updateCountdown()
     countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 }
 
+void MainWindow::addCountdownTime(int seconds){
+    countdownTime += seconds;
+    countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+}
+
 void MainWindow::togglePause(){
     isPaused = !isPaused;
     if(isPaused){
@@ -148,6 +168,40 @@ void MainWindow::togglePause(){
 void MainWindow::handleActivation(Box* box, Character* sender)
 {
     if (!box) return;
+
+    // 检查是否是道具盒子（类型 >= 1）
+    if (box->toolType >= 1) {
+        // 根据道具类型执行相应效果
+        switch (box->toolType) {
+        case 1: // +1s道具
+            countdownTime += 1;
+            countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+
+            // 可以添加视觉反馈
+            QGraphicsTextItem* feedback = scene->addText("+1s");
+            feedback->setDefaultTextColor(Qt::green);
+            feedback->setFont(QFont("Consolas", 16, QFont::Bold));
+            feedback->setZValue(100);
+            feedback->setPos(sender->getPosition());
+
+            QTimer::singleShot(1000, [feedback]() {
+                if (feedback->scene()) {
+                    feedback->scene()->removeItem(feedback);
+                    delete feedback;
+                }
+            });
+            break;
+            // 可以添加其他道具效果
+        }
+
+        if (gameMap) {
+            gameMap->m_tools.removeOne(box);
+        }
+        // 移除道具盒子
+        scene->removeItem(box);
+        delete box;
+        return;
+    }
 
     if (!lastActivatedBox) {
         lastActivatedBox = box;

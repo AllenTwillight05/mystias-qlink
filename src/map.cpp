@@ -11,6 +11,7 @@ Map::Map(int rows, int cols, int typeCount,
     : m_boxes(),
     m_map(),
     m_scene(scene), //这里mainwindow中传入box
+    m_tools(),
     m_rows(rows),
     m_cols(cols),
     m_typeCount(typeCount),
@@ -31,10 +32,12 @@ Map::Map(int rows, int cols, int typeCount,
 //     }
 //     delete[] disOrder;
 // }
+
 Map::~Map()
 {
     // 这里不要手动 delete b，让 scene->clear() 来做
     m_boxes.clear();   // 只是清空容器，不销毁 Box
+    m_tools.clear();
     delete[] disOrder;
 }
 
@@ -67,17 +70,19 @@ QVector<QPointF> Map::cellsToScene(const QVector<QPoint>& cells) const {
 
 void Map::initMap()
 {
-    disOrder = new int[m_typeCount];
+    disOrder = new int[m_typeCount + 1];
     for (int i = 0; i < m_typeCount; ++i) {
         //disOrder[i] = QRandomGenerator::global()->bounded(164);    // 精灵图参数：recipe
         disOrder[i] = QRandomGenerator::global()->bounded(62);    // 精灵图参数：ingridient
     }
+    disOrder[m_typeCount] = -1;
 
     m_map.resize(m_rows);
     for (int i = 0; i < m_rows; i++) {
         m_map[i].resize(m_cols);
         for (int j = 0; j < m_cols; j++) {
-            m_map[i][j] = disOrder[QRandomGenerator::global()->bounded(m_typeCount)];
+            int randomIndex = QRandomGenerator::global()->bounded(m_typeCount + 1);
+            m_map[i][j] = disOrder[randomIndex];
         }
     }
 }
@@ -136,6 +141,8 @@ void Map::setMapData(const QVector<QVector<int>>& newMapData)
     // 首先清理现有的箱子对象，避免内存泄漏
     qDeleteAll(m_boxes);
     m_boxes.clear();
+    qDeleteAll(m_tools);
+    m_tools.clear();
 
     // 复制新的地图数据
     m_map = newMapData;
