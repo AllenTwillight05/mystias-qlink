@@ -70,7 +70,7 @@ QVector<QPointF> Map::cellsToScene(const QVector<QPoint>& cells) const {
 
 void Map::initMap()
 {
-    disOrder = new int[m_typeCount + 1];
+    disOrder = new int[m_typeCount + 1];    //多加一个的位置赋-1，对应空格
     for (int i = 0; i < m_typeCount; ++i) {
         //disOrder[i] = QRandomGenerator::global()->bounded(164);    // 精灵图参数：recipe
         disOrder[i] = QRandomGenerator::global()->bounded(62);    // 精灵图参数：ingridient

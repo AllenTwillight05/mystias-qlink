@@ -50,9 +50,12 @@ void PowerUpManager::spawnPowerUp(int powerUpType)
     QString imagePath;
     switch (powerUpType) {
     case 1: // +1s道具
-        imagePath = ":/assets/wellington.png";
+        imagePath = ":/assets/time.png";
         break;
     // 可以添加其他道具类型
+    case 2: //shuffle
+        imagePath = ":/assets/wellington.png";
+        break;
     default:
         return; // 未知类型不生成
     }
@@ -60,13 +63,24 @@ void PowerUpManager::spawnPowerUp(int powerUpType)
     // 创建道具盒子
     Box* powerUpBox = new Box(gameMap->cellCenterPx(r,c), imagePath, gameScene);
     powerUpBox->toolType = powerUpType;  // 设置道具类型标识
+    powerUpBox->row = r;  // 确保设置行列信息
+    powerUpBox->col = c;
     gameMap->m_tools.append(powerUpBox);
 
     // 设置10秒后自动消失
-    QTimer::singleShot(10000, [powerUpBox]() {
-        if (powerUpBox && powerUpBox->scene()) {
-            powerUpBox->scene()->removeItem(powerUpBox);
+    QTimer::singleShot(10000, [this, powerUpBox]() {
+        // 检查道具是否仍然有效且存在于场景中
+        if (!powerUpBox) return;
+
+        // 检查道具是否还在游戏地图的道具列表中
+        if (gameMap && gameMap->m_tools.contains(powerUpBox)) {
+            // 如果道具还在，说明没有被玩家收集，安全移除
+            gameMap->m_tools.removeOne(powerUpBox);
+            if (powerUpBox->scene()) {
+                powerUpBox->scene()->removeItem(powerUpBox);
+            }
             delete powerUpBox;
         }
+        // 如果道具不在m_tools中，说明已被玩家收集，什么都不做
     });
 }

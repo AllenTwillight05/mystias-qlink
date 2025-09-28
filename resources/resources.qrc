@@ -6,5 +6,6 @@
         <file>assets/recipe.png</file>
         <file>assets/ingredient.png</file>
         <file>assets/sprites1.png</file>
+        <file>assets/time.png</file>
     </qresource>
 </RCC>

@@ -15,6 +15,7 @@
 #include <QAction>        // 菜单动作
 #include <QFileDialog>    // 文件对话框
 #include <QMessageBox>    // 消息框
+#include <QRandomGenerator>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -59,12 +60,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 创建道具
     // 添加定时器定期生成道具
-    powerUpManager->spawnPowerUp(1);
+    powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(1,2));
     QTimer* powerUpSpawnTimer = new QTimer(this);
     connect(powerUpSpawnTimer, &QTimer::timeout, this, [this]() {
-        powerUpManager->spawnPowerUp(1); // 每30秒生成一个+1s道具
+        powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(1,2)); // 每15秒生成一个道具
     });
-    powerUpSpawnTimer->start(30000);
+    powerUpSpawnTimer->start(15000);
 
     // 倒计时
     countdownTime = initialCountdownTime;
@@ -174,7 +175,7 @@ void MainWindow::handleActivation(Box* box, Character* sender)
         // 根据道具类型执行相应效果
         switch (box->toolType) {
         case 1: // +1s道具
-            countdownTime += 1;
+            countdownTime += 30;
             countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 
             // 可以添加视觉反馈
@@ -346,6 +347,7 @@ void MainWindow::onLoadGame()
                                                     QDir::currentPath(),
                                                     tr("连连看存档 (*.lksav)"));
     if (!filename.isEmpty()) {
+
         // 直接传递角色列表
         if (saveManager.loadGame(filename, *gameMap, characters, countdownTime)) {
             QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
