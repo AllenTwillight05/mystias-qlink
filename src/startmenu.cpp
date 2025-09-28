@@ -48,7 +48,7 @@ StartMenu::StartMenu(QWidget *parent)
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addStretch();
     layout->addWidget(singleBtn, 0, Qt::AlignHCenter);
-    layout->addSpacing(12);
+    layout->addSpacing(24); // 间隔
     layout->addWidget(multiBtn, 0, Qt::AlignHCenter);
     layout->addStretch();
     layout->setContentsMargins(60, 40, 60, 60);

@@ -18,6 +18,11 @@ PowerUpManager::PowerUpManager(QObject* parent)
     connect(hintUpdateTimer, &QTimer::timeout, this, &PowerUpManager::updateHintPair);
 }
 
+PowerUpManager::~PowerUpManager()
+{
+    deactivateHint();
+}
+
 void PowerUpManager::initialize(Map* map, QGraphicsScene* scene)
 {
     gameMap = map;

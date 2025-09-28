@@ -26,6 +26,7 @@ class Character : public QObject, public QGraphicsPixmapItem
 
 public:
     Character(const QString& spritePath, QObject* parent = nullptr);
+    ~Character();
 
     void setControls(const ControlScheme& scheme) { controls = scheme; }
     void setGameMap(Map* map) { gameMap = map; }

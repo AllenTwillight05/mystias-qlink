@@ -14,6 +14,7 @@ class PowerUpManager : public QObject
     Q_OBJECT
 public:
     explicit PowerUpManager(QObject* parent = nullptr);
+    ~PowerUpManager();
 
     // 初始化，设置地图和场景
     void initialize(Map* map, QGraphicsScene* scene);

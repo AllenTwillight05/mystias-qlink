@@ -54,6 +54,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    qDebug() << "MainWindow destructor called";
     // 彻底清理游戏资源（StartMenu 由 parent 自动删除）
     cleanupGameResources();
 }
@@ -149,109 +150,155 @@ void MainWindow::startGame(int playerCount)
 /* ---------------------- 清理游戏资源，保证顺序与安全 ---------------------- */
 void MainWindow::cleanupGameResources()
 {
-    // 停止倒计时
+    static bool isCleaningUp = false;
+    if (isCleaningUp) {
+        qDebug() << "Already cleaning up, skipping duplicate call";
+        return;
+    }
+    isCleaningUp = true;
+
+    qDebug() << "=== Starting cleanupGameResources ===";
+
+    // 1. 停止定时器
     if (countdownTimer) {
+        qDebug() << "Stopping countdown timer";
         countdownTimer->stop();
-        QObject::disconnect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
+        countdownTimer->disconnect();
     }
 
-    // 停止并删除道具生成定时器
     if (powerUpSpawnTimer) {
+        qDebug() << "Stopping powerup spawn timer";
         powerUpSpawnTimer->stop();
-        delete powerUpSpawnTimer;
+        powerUpSpawnTimer->deleteLater();
         powerUpSpawnTimer = nullptr;
     }
 
-    // 停停 hint 并删除道具管理器
+    // 2. 停用道具管理器
     if (powerUpManager) {
+        qDebug() << "Deactivating powerup manager";
         powerUpManager->deactivateHint();
-        delete powerUpManager;
-        powerUpManager = nullptr;
+        // 作为 MainWindow 的子对象，会自动销毁
     }
 
-    // 删除地图（Map 的析构应处理其 own items）
+    // 3. 清理角色
+    qDebug() << "Cleaning up" << characters.size() << "characters";
+    for (Character* c : characters) {
+        if (c) {
+            c->stopTimers();
+            if (scene && scene->items().contains(c)) {
+                scene->removeItem(c);
+            }
+            c->deleteLater(); // 交给 Qt 事件循环删除
+        }
+    }
+    characters.clear();
+    qDebug() << "Characters cleanup completed";
+
+    // 4. 清理地图
     if (gameMap) {
+        qDebug() << "Deleting game map";
         delete gameMap;
         gameMap = nullptr;
     }
 
-    // 删除并停止角色
-    // for (Character* c : characters) {
-    //     if (c) {
-    //         c->stopTimers(); // 防止内部计时器还在回调
-    //         if (scene && scene->items().contains(c)) scene->removeItem(c);
-    //         delete c;
-    //     }
-    // }
-    characters.clear();
-
-    // 删除倒计时文本
-    if (countdownText) {
-        if (scene && scene->items().contains(countdownText)) scene->removeItem(countdownText);
-        delete countdownText;
-        countdownText = nullptr;
+    // 5. 清理 scene 内的图形项（只用 clear，不手动 delete）
+    if (scene) {
+        qDebug() << "Clearing scene items safely";
+        scene->clear(); // 自动删除所有 QGraphicsItem
     }
 
-    // 删除当前绘制路径
-    if (currentPathItem) {
-        if (scene && scene->items().contains(currentPathItem)) scene->removeItem(currentPathItem);
-        delete currentPathItem;
-        currentPathItem = nullptr;
-    }
-
-    // 删除 scene 中残留的 items（谨慎）
-    // if (scene) {
-    //     QList<QGraphicsItem*> items = scene->items();
-    //     for (QGraphicsItem* it : items) {
-    //         scene->removeItem(it);
-    //         delete it;
-    //     }
-    // }
-
-    // 从 central widget 中移除 view（如果存在）
+    // 6. 移除 view
     if (view && centralWidget() == view) {
+        qDebug() << "Removing view from central widget";
         setCentralWidget(nullptr);
     }
 
-    // 删除 view 与 scene（按先后顺序）
+    // 7. 删除 view 和 scene
     if (view) {
-        delete view;
+        qDebug() << "Deleting view and its scene";
+        view->setScene(nullptr);
+        delete view;   // 会同时 delete 绑定的 scene
         view = nullptr;
-    }
-    if (scene) {
+        scene = nullptr;
+    } else if (scene) {
         delete scene;
         scene = nullptr;
     }
 
-    // 清空菜单，避免重复项
-    menuBar()->clear();
+    qDebug() << "=== Finished cleanupGameResources ===";
+    isCleaningUp = false;
 }
+
 
 /* ---------------------- 回到主菜单 ---------------------- */
 void MainWindow::resetToTitleScreen()
 {
+    qDebug() << "=== Starting resetToTitleScreen ===";
+
+    // 直接清理，不需要延迟
     cleanupGameResources();
 
-    // 切回 startMenu（它是 this 的子控件并一直存在）
+    // 确保startMenu仍然有效
+    if (!startMenu) {
+        qDebug() << "Error: startMenu is null, recreating";
+        startMenu = new StartMenu(this);
+        connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
+        connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
+    }
+
+    qDebug() << "Setting central widget to start menu";
     setCentralWidget(startMenu);
+
+    // 强制刷新界面
+    update();
+    repaint();
+    qDebug() << "=== Finished resetToTitleScreen ===";
 }
 
+
 /* ---------------------- 输入事件转发 ---------------------- */
+/* ---------------------- 安全的输入事件处理 ---------------------- */
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Space) {
         togglePause();
         return;
     }
-    for (Character* c : characters) {
-        c->handleKeyPress(event);
+
+    // 更严格的安全检查
+    if (characters.isEmpty() || !scene || !gameMap) {
+        qDebug() << "Key press ignored - game not ready";
+        return;
+    }
+
+    for (int i = 0; i < characters.size(); ++i) {
+        Character* c = characters[i];
+        if (c && c->scene() == scene) { // 确保角色仍在scene中
+            c->handleKeyPress(event);
+        } else if (c == nullptr) {
+            qDebug() << "Warning: null character at index" << i;
+            characters.removeAt(i);
+            --i; // 调整索引
+        }
     }
 }
 
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
-    for (Character* c : characters) {
-        c->handleKeyRelease(event);
+    if (characters.isEmpty() || !scene || !gameMap) {
+        qDebug() << "Key release ignored - game not ready";
+        return;
+    }
+
+    for (int i = 0; i < characters.size(); ++i) {
+        Character* c = characters[i];
+        if (c && c->scene() == scene) { // 确保角色仍在scene中
+            c->handleKeyRelease(event);
+        } else if (c == nullptr) {
+            qDebug() << "Warning: null character at index" << i;
+            characters.removeAt(i);
+            --i; // 调整索引
+        }
     }
 }
 
@@ -480,30 +527,49 @@ void MainWindow::onLoadGame()
 /* ---------------------- Game Over 弹窗 ---------------------- */
 void MainWindow::showGameOverDialog()
 {
+    qDebug() << "=== Starting showGameOverDialog ===";
+
+    // 先停止所有活动
     for (Character* c : characters) {
-        c->stopTimers();
+        if (c) {
+            qDebug() << "Stopping character timers";
+            c->stopTimers();
+        }
     }
-    if (countdownTimer) countdownTimer->stop();
 
-    if (powerUpManager) powerUpManager->deactivateHint();
+    if (countdownTimer) {
+        qDebug() << "Stopping countdown timer in game over";
+        countdownTimer->stop();
+    }
 
+    if (powerUpManager) {
+        qDebug() << "Deactivating hint in game over";
+        powerUpManager->deactivateHint();
+    }
+
+    // 使用栈上的对话框，避免内存管理问题
     QDialog dlg(this);
     dlg.setWindowTitle("Game Over");
     dlg.resize(300, 150);
     dlg.setStyleSheet("background-color: AntiqueWhite;");
 
-    QVBoxLayout* layout = new QVBoxLayout(&dlg);
-    QLabel* label = new QLabel("GAME OVER");
-    label->setStyleSheet("color: SaddleBrown; font-size: 20px;");
-    label->setAlignment(Qt::AlignCenter);
-    layout->addWidget(label);
+    QVBoxLayout layout(&dlg);
+    QLabel label("GAME OVER");
+    label.setStyleSheet("color: SaddleBrown; font-size: 20px;");
+    label.setAlignment(Qt::AlignCenter);
+    layout.addWidget(&label);
 
-    QPushButton* okButton = new QPushButton("Return to Menu");
-    okButton->setStyleSheet("background-color: SaddleBrown; color: OldLace;");
-    layout->addWidget(okButton);
-    connect(okButton, &QPushButton::clicked, &dlg, &QDialog::accept);
+    QPushButton okButton("Return to Menu");
+    okButton.setStyleSheet("background-color: SaddleBrown; color: OldLace;");
+    layout.addWidget(&okButton);
 
-    dlg.exec();
+    connect(&okButton, &QPushButton::clicked, &dlg, &QDialog::accept);
 
-    resetToTitleScreen();
+    qDebug() << "Showing game over dialog";
+    if (dlg.exec() == QDialog::Accepted) {
+        qDebug() << "Dialog accepted, resetting to title screen";
+        resetToTitleScreen();
+    }
+
+    qDebug() << "=== Finished showGameOverDialog ===";
 }

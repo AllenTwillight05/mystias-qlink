@@ -46,6 +46,16 @@ Character::Character(const QString& spritePath, QObject* parent)
 
 }
 
+Character::~Character()
+{
+    qDebug() << "Character destructor called";
+    qDebug() << " - movementTimer exists:" << (movementTimer != nullptr);
+    qDebug() << " - animationTimer exists:" << (animationTimer != nullptr);
+    qDebug() << " - gameMap exists:" << (gameMap != nullptr);
+    stopTimers();
+    qDebug() << "Character destructor finished";
+}
+
 void Character::updateCharacterSprite() {
     if (spriteSheet.isNull()) return;
 
@@ -193,7 +203,18 @@ void Character::handleKeyRelease(QKeyEvent* event) {
     }
 }
 
-void Character::stopTimers() {
-    if (movementTimer) movementTimer->stop();
-    if (animationTimer) animationTimer->stop();
+void Character::stopTimers()
+{
+    qDebug() << "Stopping character timers";
+    if (movementTimer) {
+        qDebug() << " - Stopping movement timer";
+        movementTimer->stop();
+        // 不要删除，让父对象管理
+    }
+    if (animationTimer) {
+        qDebug() << " - Stopping animation timer";
+        animationTimer->stop();
+        // 不要删除，让父对象管理
+    }
+    qDebug() << "Character timers stopped";
 }

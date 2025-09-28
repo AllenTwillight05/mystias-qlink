@@ -37,8 +37,9 @@ Map::Map(int rows, int cols, int typeCount,
 
 Map::~Map()
 {
-    // 这里不要手动 delete b，让 scene->clear() 来做
-    m_boxes.clear();   // 只是清空容器，不销毁 Box
+    qDebug() << "Map destructor called";
+    // 不要删除 boxes，让 scene 管理
+    m_boxes.clear();
     m_tools.clear();
     delete[] disOrder;
     disOrder = nullptr;
