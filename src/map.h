@@ -49,6 +49,8 @@ public:
     // 工具函数：坐标换算
     QPointF cellCenterPx(int r, int c) const;
 
+    void shuffleBoxes();  // 重排所有方块位置
+
 private:
     int m_rows;             // 行数
     int m_cols;             // 列数

@@ -60,10 +60,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 创建道具
     // 添加定时器定期生成道具
-    powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(1,2));
+    powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3)+1);
     QTimer* powerUpSpawnTimer = new QTimer(this);
     connect(powerUpSpawnTimer, &QTimer::timeout, this, [this]() {
-        powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(1,2)); // 每15秒生成一个道具
+        powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3)+1); // 每15秒生成一个道具
     });
     powerUpSpawnTimer->start(15000);
 
@@ -174,7 +174,7 @@ void MainWindow::handleActivation(Box* box, Character* sender)
     if (box->toolType >= 1) {
         // 根据道具类型执行相应效果
         switch (box->toolType) {
-        case 1: // +1s道具
+        case 1: { // +1s道具 - 注意这里添加了花括号
             countdownTime += 30;
             countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 
@@ -192,7 +192,49 @@ void MainWindow::handleActivation(Box* box, Character* sender)
                 }
             });
             break;
-            // 可以添加其他道具效果
+        }
+        case 2: { // Shuffle道具 - 注意这里添加了花括号
+            // 执行重排
+            if (gameMap) {
+                gameMap->shuffleBoxes();
+            }
+
+            // 视觉反馈
+            QGraphicsTextItem* feedback = scene->addText("Shuffle!");
+            feedback->setDefaultTextColor(Qt::blue);
+            feedback->setFont(QFont("Consolas", 16, QFont::Bold));
+            feedback->setZValue(100);
+            feedback->setPos(sender->getPosition());
+
+            QTimer::singleShot(1000, [feedback]() {
+                if (feedback->scene()) {
+                    feedback->scene()->removeItem(feedback);
+                    delete feedback;
+                }
+            });
+            break;
+        }
+        case 3: { // Hint道具
+            // 激活Hint效果
+            if (powerUpManager) {
+                powerUpManager->activateHint();
+            }
+
+            QGraphicsTextItem* feedback = scene->addText("Hint!");
+            feedback->setDefaultTextColor(Qt::yellow);
+            feedback->setFont(QFont("Consolas", 16, QFont::Bold));
+            feedback->setZValue(100);
+            feedback->setPos(sender->getPosition());
+
+            QTimer::singleShot(1000, [feedback]() {
+                if (feedback->scene()) {
+                    feedback->scene()->removeItem(feedback);
+                    delete feedback;
+                }
+            });
+            break;
+        }
+        // 可以继续添加其他道具类型
         }
 
         if (gameMap) {
@@ -374,6 +416,11 @@ void MainWindow::showGameOverDialog() {
         c->stopTimers();
     }
     countdownTimer->stop();
+
+    // 停止Hint效果
+    if (powerUpManager) {
+        powerUpManager->deactivateHint();
+    }
 
     QDialog dlg(this);
     dlg.setWindowTitle("Game Over");

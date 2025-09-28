@@ -2,6 +2,8 @@
 #include <QPixmap>
 #include <QRandomGenerator>
 #include <QDebug>
+#include <random>
+#include <algorithm>
 
 // ================= 构造 / 析构 =================
 
@@ -313,5 +315,85 @@ bool Map::isSolvable()
     }
 
     return false;
+}
+
+void Map::shuffleBoxes()
+{
+    if (m_boxes.isEmpty()) return;
+
+    // 1. 收集所有普通方块的类型（排除道具方块）
+    QVector<int> boxTypes;
+    for (Box* box : m_boxes) {
+        boxTypes.append(m_map[box->row][box->col]);
+    }
+
+    // 2. 获取所有可用位置（排除道具方块占据的位置）
+    QVector<QPoint> availablePositions;
+    for (int i = 0; i < m_rows; i++) {
+        for (int j = 0; j < m_cols; j++) {
+            // 检查该位置是否被道具占据
+            bool occupiedByTool = false;
+            for (Box* tool : m_tools) {
+                if (tool->row == i && tool->col == j) {
+                    occupiedByTool = true;
+                    break;
+                }
+            }
+            if (!occupiedByTool) {
+                availablePositions.append(QPoint(j, i)); // QPoint(x,y) 对应 (col,row)
+            }
+        }
+    }
+
+    // 3. 随机打乱类型和位置
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(boxTypes.begin(), boxTypes.end(), g);
+    std::shuffle(availablePositions.begin(), availablePositions.end(), g);
+
+    // 4. 更新地图数据和方块位置
+    // 先清空地图（保留道具位置）
+    for (int i = 0; i < m_rows; i++) {
+        for (int j = 0; j < m_cols; j++) {
+            // 如果不是道具位置，就设为-1
+            bool isToolPos = false;
+            for (Box* tool : m_tools) {
+                if (tool->row == i && tool->col == j) {
+                    isToolPos = true;
+                    break;
+                }
+            }
+            if (!isToolPos) {
+                m_map[i][j] = -1;
+            }
+        }
+    }
+
+    // 5. 重新分配方块位置和更新场景显示
+    for (int i = 0; i < m_boxes.size() && i < availablePositions.size(); i++) {
+        Box* box = m_boxes[i];
+        QPoint newPos = availablePositions[i];
+        int newType = boxTypes[i];
+
+        // 更新地图数据
+        m_map[newPos.y()][newPos.x()] = newType;
+
+        // 更新方块属性
+        box->row = newPos.y();
+        box->col = newPos.x();
+        box->boxType = newType;
+
+        // 更新精灵图
+        QPixmap newSprite = getSpriteByType(newType);
+        if (!newSprite.isNull()) {
+            box->setPixmap(newSprite);
+        }
+
+        // 更新场景位置
+        QPointF scenePos = cellCenterPx(newPos.y(), newPos.x());
+        box->setPos(scenePos);
+    }
+
+    qDebug() << "Shuffle completed:" << m_boxes.size() << "boxes rearranged";
 }
 
