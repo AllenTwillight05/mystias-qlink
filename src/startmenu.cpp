@@ -10,8 +10,8 @@
 StartMenu::StartMenu(QWidget *parent)
     : QWidget(parent),
     backgroundLabel(new QLabel(this)),
-    singleBtn(new QPushButton(tr("单人游戏"), this)),
-    multiBtn(new QPushButton(tr("多人游戏"), this)),
+    singleBtn(new QPushButton(tr("独自采集"), this)),
+    multiBtn(new QPushButton(tr("招募伙伴"), this)),
     bgPixmap(":/assets/start_menu_bg.png")
 {
     // 背景 label 在底层
@@ -24,10 +24,10 @@ StartMenu::StartMenu(QWidget *parent)
         "  font-size: 24px;"
         "  padding: 12px 30px;"
         "  border-radius: 12px;"
-        "  background-color: rgba(25, 25, 25, 60);"  // 半透明白
+        "  background-color: rgba(50, 50, 50, 60);"  // 半透明白
         "}"
         "QPushButton:hover {"
-        "  background-color: rgba(25, 25, 25, 100);"
+        "  background-color: rgba(125, 125, 125, 100);"
         "}"
         );
 
@@ -36,28 +36,42 @@ StartMenu::StartMenu(QWidget *parent)
         "  font-size: 24px;"
         "  padding: 12px 30px;"
         "  border-radius: 12px;"
-        "  background-color: rgba(25, 25, 25, 60);"
+        "  background-color: rgba(50, 50, 50, 60);"
         "}"
         "QPushButton:hover {"
-        "  background-color: rgba(25, 25, 25, 100);"
+        "  background-color: rgba(125, 125, 125, 100);"
         "}"
         );
 
+    // 创建垂直布局放置按钮
+    QVBoxLayout *buttonLayout = new QVBoxLayout();
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(singleBtn, 0, Qt::AlignLeft);  // 左对齐
+    buttonLayout->addSpacing(24);
+    buttonLayout->addWidget(multiBtn, 0, Qt::AlignLeft);   // 左对齐
+    buttonLayout->addStretch();
+    buttonLayout->setContentsMargins(60, 40, 60, 60);
 
-    // 布局：垂直居中
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addStretch();
-    layout->addWidget(singleBtn, 0, Qt::AlignHCenter);
-    layout->addSpacing(24); // 间隔
-    layout->addWidget(multiBtn, 0, Qt::AlignHCenter);
-    layout->addStretch();
-    layout->setContentsMargins(60, 40, 60, 60);
-    setLayout(layout);
+
+    // 使用网格布局，更精确控制列宽
+    QGridLayout *mainLayout = new QGridLayout(this);
+    mainLayout->setColumnStretch(0, 1); // 第一列占1份
+    mainLayout->setColumnStretch(1, 1); // 第二列占1份
+    mainLayout->setColumnStretch(2, 5); // 第三列占5份
+
+    QWidget *leftContainer = new QWidget(this);
+    leftContainer->setLayout(buttonLayout);
+
+    mainLayout->addWidget(leftContainer, 0, 1);
+    // 第1列留空，占第二列
+
+    setLayout(mainLayout);
+
+    setLayout(mainLayout);
 
     connect(singleBtn, &QPushButton::clicked, this, &StartMenu::startSinglePlayer);
     connect(multiBtn, &QPushButton::clicked, this, &StartMenu::startMultiPlayer);
 
-    // 如果背景资源不存在，打印提示
     if (bgPixmap.isNull()) {
         qWarning() << "StartMenu: 背景图片未找到: :/assets/start_menu_bg.png";
     }

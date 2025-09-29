@@ -644,7 +644,7 @@ void MainWindow::showGameOverDialog()
     if (powerUpSpawnTimer) powerUpSpawnTimer->stop();
 
     // 使用最简单的消息框
-    QMessageBox::information(this, "Game Over", "GAME OVER\nReturn to main menu");
+    QMessageBox::information(this, "Game Over", "采集完毕~\n今天也是干劲十足");
 
     qDebug() << "Resetting to title screen from game over";
     resetToTitleScreen();
