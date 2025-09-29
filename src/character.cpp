@@ -11,22 +11,25 @@
 Character::Character(const QString& spritePath, QObject* parent)
     : QObject(parent), QGraphicsPixmapItem(),
     isPaused(false), isMoving(false), currentDirection(0), currentFrame(0),
+    movementTimer(new QTimer(this)), // 直接创建
+    animationTimer(new QTimer(this)), // 直接创建
+    gameMap(nullptr),
     characterScore(new Score(this))
 {
     spriteSheet.load(spritePath);
-    setOffset(-frameWidth/2, -frameHeight/2);
+    if (spriteSheet.isNull()) {
+        qWarning() << "Failed to load sprite:" << spritePath;
+    }
 
+    setOffset(-frameWidth/2, -frameHeight/2);
     updateCharacterSprite();
     setZValue(2);
 
-    // 移动计时器 (30 FPS)
-    // 注意movementTimer和animationTimer都是指针，所以直接传入connect合法
-    movementTimer = new QTimer(this);
+    // 运动30帧
     connect(movementTimer, &QTimer::timeout, this, &Character::updateMovement);
     movementTimer->start(33);
 
-    // 动画计时器 (5 FPS)
-    animationTimer = new QTimer(this);
+    // 动画5帧
     connect(animationTimer, &QTimer::timeout, this, &Character::updateAnimation);
     animationTimer->start(200);
 
@@ -46,14 +49,20 @@ Character::Character(const QString& spritePath, QObject* parent)
 
 }
 
-Character::~Character()
-{
-    qDebug() << "Character destructor called";
-    qDebug() << " - movementTimer exists:" << (movementTimer != nullptr);
-    qDebug() << " - animationTimer exists:" << (animationTimer != nullptr);
-    qDebug() << " - gameMap exists:" << (gameMap != nullptr);
-    stopTimers();
-    qDebug() << "Character destructor finished";
+Character::~Character() {
+    qDebug() << "Character destructor called - safe mode";
+    // 不进行任何操作，让 Qt 自动管理
+}
+
+void Character::setGameMap(Map* map){
+    gameMap = map;
+    // 如果地图为空，停止移动避免崩溃
+    if (!gameMap) {
+        stopMoving();
+        // 确保定时器也停止
+        if (movementTimer) movementTimer->stop();
+        if (animationTimer) animationTimer->stop();
+    }
 }
 
 void Character::updateCharacterSprite() {
@@ -87,7 +96,7 @@ void Character::stopMoving() {
 }
 
 void Character::updateMovement() {
-    if (!isMoving || isPaused) return;
+    if (!isMoving || isPaused || !gameMap) return; // 检查 gameMap 是否存在
 
     characterScore->setZValue(150);
 
@@ -203,18 +212,18 @@ void Character::handleKeyRelease(QKeyEvent* event) {
     }
 }
 
-void Character::stopTimers()
-{
-    qDebug() << "Stopping character timers";
+void Character::stopTimers() {
+    qDebug() << "Stopping character timers safely";
     if (movementTimer) {
-        qDebug() << " - Stopping movement timer";
         movementTimer->stop();
-        // 不要删除，让父对象管理
+        disconnect(movementTimer, nullptr, this, nullptr);
+        movementTimer->deleteLater(); // 使用 deleteLater 而不是立即删除
+        movementTimer = nullptr;
     }
     if (animationTimer) {
-        qDebug() << " - Stopping animation timer";
         animationTimer->stop();
-        // 不要删除，让父对象管理
+        disconnect(animationTimer, nullptr, this, nullptr);
+        animationTimer->deleteLater(); // 使用 deleteLater 而不是立即删除
+        animationTimer = nullptr;
     }
-    qDebug() << "Character timers stopped";
 }

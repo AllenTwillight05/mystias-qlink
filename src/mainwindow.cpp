@@ -86,10 +86,15 @@ void MainWindow::setupSceneDefaults(QGraphicsScene *s)
 /* ---------------------- 开始游戏：创建 scene/view/map/角色 ---------------------- */
 void MainWindow::startGame(int playerCount)
 {
+    qDebug() << "=== Starting game with" << playerCount << "players ===";
+
     // 如果已有游戏在运行，先清理
     cleanupGameResources();
 
-    // 新建 scene 和 view（把 scene 的父对象设为 this 便于管理）
+    // 确保所有删除操作完成
+    QCoreApplication::processEvents();
+
+    // 新建 scene 和 view
     scene = new QGraphicsScene(this);
     setupSceneDefaults(scene);
 
@@ -98,10 +103,10 @@ void MainWindow::startGame(int playerCount)
     view->setRenderHint(QPainter::TextAntialiasing);
     view->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
 
-    // 切换 central widget（替换 startMenu）
+    // 切换 central widget
     setCentralWidget(view);
 
-    // 创建菜单（会先清空旧菜单）
+    // 创建菜单
     createMenu();
 
     // 初始化道具管理器
@@ -114,7 +119,8 @@ void MainWindow::startGame(int playerCount)
     // 初始化道具管理器（依赖 map）
     powerUpManager->initialize(gameMap, scene);
 
-    // 创建角色
+    // 创建角色 - 确保完全清理旧角色
+    characters.clear();
     if (playerCount >= 1) {
         Character* character1 = new Character(":/assets/sprites0.png", this);
         character1->setPos(mapWidth/5, mapHeight/5);
@@ -123,6 +129,7 @@ void MainWindow::startGame(int playerCount)
         scene->addItem(character1);
         connect(character1, &Character::collidedWithBox, this, &MainWindow::handleActivation);
         characters.append(character1);
+        qDebug() << "Created player 1";
     }
     if (playerCount >= 2) {
         Character* character2 = new Character(":/assets/sprites1.png", this);
@@ -132,9 +139,10 @@ void MainWindow::startGame(int playerCount)
         scene->addItem(character2);
         connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
         characters.append(character2);
+        qDebug() << "Created player 2";
     }
 
-    // 道具生成定时器（先生成一个）
+    // 道具生成定时器
     powerUpSpawnTimer = new QTimer(this);
     connect(powerUpSpawnTimer, &QTimer::timeout, this, [this]() {
         if (powerUpManager) powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3) + 1);
@@ -150,34 +158,34 @@ void MainWindow::startGame(int playerCount)
     countdownText->setZValue(100);
     countdownText->setPos(20, 20);
 
-    // 连接倒计时（防止重复连接）
-    connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown, Qt::UniqueConnection);
+    // 连接倒计时
+    if (countdownTimer) {
+        countdownTimer->stop();
+        disconnect(countdownTimer, nullptr, this, nullptr);
+    }
+    connect(countdownTimer, &QTimer::timeout, this, &MainWindow::updateCountdown);
     countdownTimer->start(1000);
 
     isPaused = false;
+    qDebug() << "=== Game started successfully ===";
 }
 
 /* ---------------------- 清理游戏资源，保证顺序与安全 ---------------------- */
 void MainWindow::cleanupGameResources()
 {
     static bool isCleaningUp = false;
-    if (isCleaningUp) {
-        qDebug() << "Already cleaning up, skipping duplicate call";
-        return;
-    }
+    if (isCleaningUp) return;
     isCleaningUp = true;
 
     qDebug() << "=== Starting cleanupGameResources ===";
 
-    // 1. 停止所有定时器并断开连接
+    // 1. 停止所有定时器
     if (countdownTimer) {
-        qDebug() << "Stopping countdown timer";
         countdownTimer->stop();
         disconnect(countdownTimer, nullptr, this, nullptr);
     }
 
     if (powerUpSpawnTimer) {
-        qDebug() << "Stopping powerup spawn timer";
         powerUpSpawnTimer->stop();
         disconnect(powerUpSpawnTimer, nullptr, this, nullptr);
         powerUpSpawnTimer->deleteLater();
@@ -186,79 +194,73 @@ void MainWindow::cleanupGameResources()
 
     // 2. 停用道具管理器
     if (powerUpManager) {
-        qDebug() << "Deactivating powerup manager";
         powerUpManager->deactivateHint();
-        // 不要删除，让父对象管理
+        powerUpManager->deleteLater();
+        powerUpManager = nullptr;
     }
 
-    // 3. 清理角色 - 使用更安全的方式
+    // 3. 安全清理角色 - 使用 deleteLater
     qDebug() << "Cleaning up" << characters.size() << "characters";
-    for (int i = characters.size() - 1; i >= 0; --i) {
-        Character* c = characters[i];
-        if (c) {
-            qDebug() << "Stopping and removing character" << i;
-            c->stopTimers();
-            disconnect(c, nullptr, this, nullptr); // 断开所有连接
+    for (Character* character : characters) {
+        if (character) {
+            qDebug() << "Safely removing character";
 
-            if (scene && scene->items().contains(c)) {
-                scene->removeItem(c);
+            // 断开所有连接
+            disconnect(character, nullptr, this, nullptr);
+
+            // 停止定时器
+            character->stopTimers();
+
+            // 从场景中移除
+            if (scene && scene->items().contains(character)) {
+                scene->removeItem(character);
             }
 
-            // 安全删除角色
-            c->setParent(nullptr);
-            c->deleteLater();
+            // 使用 deleteLater 而不是立即删除
+            character->deleteLater();
         }
     }
     characters.clear();
-    qDebug() << "Characters cleanup completed";
 
-    // 4. 清理路径项
+    // 4. 清理路径项 (QGraphicsPathItem 不是 QObject，需要直接删除)
     if (currentPathItem) {
         if (scene && scene->items().contains(currentPathItem)) {
             scene->removeItem(currentPathItem);
         }
+        delete currentPathItem; // 直接删除
         currentPathItem = nullptr;
     }
 
-    // 5. 清理地图
-    if (gameMap) {
-        qDebug() << "Deleting game map";
-        // 先断开地图可能存在的连接
-        disconnect(countdownTimer, nullptr, this, nullptr);
-        delete gameMap;
-        gameMap = nullptr;
-    }
-
-    // 6. 清理倒计时文本
+    // 5. 清理倒计时文本 (QGraphicsTextItem 不是 QObject，需要直接删除)
     if (countdownText) {
         if (scene && scene->items().contains(countdownText)) {
             scene->removeItem(countdownText);
         }
+        delete countdownText; // 直接删除
         countdownText = nullptr;
     }
 
-    // 7. 清理 scene 和 view
-    if (view && centralWidget() == view) {
-        qDebug() << "Removing view from central widget";
+    // 6. 清理地图 (Map 不是 QObject，需要直接删除)
+    if (gameMap) {
+        delete gameMap; // 直接删除
+        gameMap = nullptr;
+    }
+
+    // 7. 清理 view 和 scene (QGraphicsView 是 QObject，可以使用 deleteLater)
+    if (view) {
         setCentralWidget(nullptr);
-
-        // 先设置scene为nullptr，再删除view
-        if (view->scene()) {
-            view->setScene(nullptr);
-        }
-
-        delete view;
+        view->deleteLater();
         view = nullptr;
-        scene = nullptr;
-    } else if (scene) {
-        // 如果view不存在但scene存在
-        delete scene;
         scene = nullptr;
     }
 
-    // 8. 重置其他状态
+    // 8. 重置状态
     lastActivatedBox = nullptr;
     countdownTime = initialCountdownTime;
+    isPaused = false;
+
+    // 强制处理所有待删除对象
+    QCoreApplication::processEvents();
 
     qDebug() << "=== Finished cleanupGameResources ===";
     isCleaningUp = false;
@@ -316,15 +318,24 @@ void MainWindow::resetToTitleScreen()
 {
     qDebug() << "=== Starting resetToTitleScreen ===";
 
-    // 最简单的方法：直接重新创建所有东西
+    // 立即暂停
+    isPaused = true;
+
+    // 清理游戏资源
     cleanupGameResources();
 
-    // 创建新的 startMenu
+    // 确保所有删除操作完成
+    QCoreApplication::processEvents();
+
+    // 创建新的开始菜单
     startMenu = new StartMenu(this);
     connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
     connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
 
     setCentralWidget(startMenu);
+
+    // 重置暂停状态
+    isPaused = false;
 
     qDebug() << "=== Finished resetToTitleScreen ===";
 }
@@ -626,47 +637,17 @@ void MainWindow::showGameOverDialog()
 {
     qDebug() << "=== Starting showGameOverDialog ===";
 
-    // 先停止所有活动
-    for (Character* c : characters) {
-        if (c) {
-            qDebug() << "Stopping character timers";
-            c->stopTimers();
-        }
-    }
+    // 立即停止所有活动
+    isPaused = true;
 
-    if (countdownTimer) {
-        qDebug() << "Stopping countdown timer in game over";
-        countdownTimer->stop();
-    }
+    if (countdownTimer) countdownTimer->stop();
+    if (powerUpSpawnTimer) powerUpSpawnTimer->stop();
 
-    if (powerUpManager) {
-        qDebug() << "Deactivating hint in game over";
-        powerUpManager->deactivateHint();
-    }
+    // 使用最简单的消息框
+    QMessageBox::information(this, "Game Over", "GAME OVER\nReturn to main menu");
 
-    // 使用栈上的对话框，避免内存管理问题
-    QDialog dlg(this);
-    dlg.setWindowTitle("Game Over");
-    dlg.resize(300, 150);
-    dlg.setStyleSheet("background-color: AntiqueWhite;");
-
-    QVBoxLayout layout(&dlg);
-    QLabel label("GAME OVER");
-    label.setStyleSheet("color: SaddleBrown; font-size: 20px;");
-    label.setAlignment(Qt::AlignCenter);
-    layout.addWidget(&label);
-
-    QPushButton okButton("Return to Menu");
-    okButton.setStyleSheet("background-color: SaddleBrown; color: OldLace;");
-    layout.addWidget(&okButton);
-
-    connect(&okButton, &QPushButton::clicked, &dlg, &QDialog::accept);
-
-    qDebug() << "Showing game over dialog";
-    if (dlg.exec() == QDialog::Accepted) {
-        qDebug() << "Dialog accepted, resetting to title screen";
-        resetToTitleScreen();
-    }
+    qDebug() << "Resetting to title screen from game over";
+    resetToTitleScreen();
 
     qDebug() << "=== Finished showGameOverDialog ===";
 }
