@@ -29,7 +29,7 @@ CONFIG += c++17
 #     resources/resources.qrc
 
 SOURCES += main.cpp \
-           mainwindow.cpp \
+           src/mainwindow.cpp \
            src/character.cpp \
            src/path.cpp \
            src/box.cpp \
@@ -40,7 +40,7 @@ SOURCES += main.cpp \
            src/score.cpp \
            src/startmenu.cpp
 
-HEADERS += mainwindow.h \
+HEADERS += src/mainwindow.h \
            src/character.h \
            src/path.h \
            src/box.h \
@@ -53,6 +53,8 @@ HEADERS += mainwindow.h \
 
 
 RESOURCES += resources/resources.qrc
+
+# RC_ICONS = $$PWD/assets/tpicon.ico
 
 # 添加 include 路径，让编译器能找到 src 下的头文件
 INCLUDEPATH += src

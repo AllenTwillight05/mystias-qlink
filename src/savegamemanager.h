@@ -39,6 +39,7 @@ private:
         QVector<QPointF> characterPositions;  // 所有角色的位置
         QVector<int> scores;                  // 所有角色的分数;
         int countdownTime;
+        //int playerCount;
 
         // 序列化操作，重载入和出运算符
         friend QDataStream &operator<<(QDataStream &out, const GameSaveData &data) {    //QDataStream类似iostream但处理Qt对象，二进制格式

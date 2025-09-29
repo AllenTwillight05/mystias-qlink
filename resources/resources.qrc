@@ -8,5 +8,7 @@
         <file>assets/sprites1.png</file>
         <file>assets/powerups.png</file>
         <file>assets/start_menu_bg.png</file>
+        <file>assets/tpicon.png</file>
+        <file>assets/tpicon.ico</file>
     </qresource>
 </RCC>

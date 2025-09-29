@@ -44,7 +44,7 @@ bool SaveGameManager::saveGame(const QString &filename,
 
 bool SaveGameManager::loadGame(const QString &filename,
                                Map &gameMap,
-                               QVector<Character*> &characters, // 改为接收角色列表
+                               QVector<Character*> &characters,
                                int &countdownTime)
 {
     QFile file(filename);
@@ -72,29 +72,44 @@ bool SaveGameManager::loadGame(const QString &filename,
         return false;
     }
 
-    GameSaveData saveData;
-    in >> saveData;
+    // 直接读取存档数据
+    QVector<QVector<int>> mapData;
+    QVector<QPointF> characterPositions;
+    QVector<int> scores;
+    int tempCountdownTime;
+
+    in >> mapData;
+    in >> characterPositions;
+    in >> scores;
+    in >> tempCountdownTime;
 
     file.close();
 
-    // 恢复地图
-    gameMap.setMapData(saveData.mapData);
-
     // 检查角色数量是否匹配
-    if (characters.size() != saveData.characterPositions.size() ||
-        characters.size() != saveData.scores.size()) {
-        emit errorOccurred(tr("存档中的角色数量与当前游戏不匹配"));
+    if (characters.size() != characterPositions.size()) {
+        QString currentMode = (characters.size() == 1) ? tr("单人游戏") : tr("双人游戏");
+        QString savedMode = (characterPositions.size() == 1) ? tr("单人游戏") : tr("双人游戏");
+
+        emit errorOccurred(
+            tr("存档模式不匹配！\n\n当前游戏模式：%1\n存档游戏模式：%2\n\n请开始%3游戏后再加载此存档。")
+                .arg(currentMode)
+                .arg(savedMode)
+                .arg(savedMode)
+            );
         return false;
     }
 
+    // 恢复地图
+    gameMap.setMapData(mapData);
+
     // 恢复角色状态
     for (int i = 0; i < characters.size(); ++i) {
-        characters[i]->setPosition(saveData.characterPositions[i]);
-        characters[i]->getCharacterScore()->setScore(saveData.scores[i]);
+        characters[i]->setPosition(characterPositions[i]);
+        characters[i]->getCharacterScore()->setScore(scores[i]);
     }
 
     // 恢复倒计时
-    countdownTime = saveData.countdownTime;
+    countdownTime = tempCountdownTime;
 
     return true;
 }

@@ -5,6 +5,7 @@
 #include "score.h"
 #include "box.h"
 #include "powerupmanager.h"
+#include "savegamemanager.h"
 
 #include <QTimer>
 #include <QMenuBar>
@@ -32,24 +33,33 @@ MainWindow::MainWindow(QWidget *parent)
     scene(nullptr),
     view(nullptr),
     gameMap(nullptr),
+    currentPathItem(nullptr),
     countdownText(nullptr),
     countdownTimer(new QTimer(this)),
     isPaused(false),
     score(nullptr),
     saveManager(this),
     powerUpManager(nullptr),
-    powerUpSpawnTimer(nullptr),
-    currentPathItem(nullptr)
+    powerUpSpawnTimer(nullptr)
 {
     setWindowTitle("Mystia’s Ingredient Quest");
     resize(1200, 675);
 
-    // 初始显示主菜单（StartMenu 永远存在）
+    // 设置窗口图标
+    // setWindowIcon(QIcon(":/assets/tpicon.ico"));
+    setWindowIcon(QIcon(":/assets/tpicon.png"));
+
+    // 初始显示主菜单
     setCentralWidget(startMenu);
 
     // 连接主菜单信号
     connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
     connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
+
+    // 连接存档管理器的错误信号
+    connect(&saveManager, &SaveGameManager::errorOccurred, this, [this](const QString &message) {
+        QMessageBox::warning(this, tr("加载失败"), message);
+    });
 }
 
 MainWindow::~MainWindow()
@@ -159,16 +169,17 @@ void MainWindow::cleanupGameResources()
 
     qDebug() << "=== Starting cleanupGameResources ===";
 
-    // 1. 停止定时器
+    // 1. 停止所有定时器并断开连接
     if (countdownTimer) {
         qDebug() << "Stopping countdown timer";
         countdownTimer->stop();
-        countdownTimer->disconnect();
+        disconnect(countdownTimer, nullptr, this, nullptr);
     }
 
     if (powerUpSpawnTimer) {
         qDebug() << "Stopping powerup spawn timer";
         powerUpSpawnTimer->stop();
+        disconnect(powerUpSpawnTimer, nullptr, this, nullptr);
         powerUpSpawnTimer->deleteLater();
         powerUpSpawnTimer = nullptr;
     }
@@ -177,81 +188,144 @@ void MainWindow::cleanupGameResources()
     if (powerUpManager) {
         qDebug() << "Deactivating powerup manager";
         powerUpManager->deactivateHint();
-        // 作为 MainWindow 的子对象，会自动销毁
+        // 不要删除，让父对象管理
     }
 
-    // 3. 清理角色
+    // 3. 清理角色 - 使用更安全的方式
     qDebug() << "Cleaning up" << characters.size() << "characters";
-    for (Character* c : characters) {
+    for (int i = characters.size() - 1; i >= 0; --i) {
+        Character* c = characters[i];
         if (c) {
+            qDebug() << "Stopping and removing character" << i;
             c->stopTimers();
+            disconnect(c, nullptr, this, nullptr); // 断开所有连接
+
             if (scene && scene->items().contains(c)) {
                 scene->removeItem(c);
             }
-            c->deleteLater(); // 交给 Qt 事件循环删除
+
+            // 安全删除角色
+            c->setParent(nullptr);
+            c->deleteLater();
         }
     }
     characters.clear();
     qDebug() << "Characters cleanup completed";
 
-    // 4. 清理地图
+    // 4. 清理路径项
+    if (currentPathItem) {
+        if (scene && scene->items().contains(currentPathItem)) {
+            scene->removeItem(currentPathItem);
+        }
+        currentPathItem = nullptr;
+    }
+
+    // 5. 清理地图
     if (gameMap) {
         qDebug() << "Deleting game map";
+        // 先断开地图可能存在的连接
+        disconnect(countdownTimer, nullptr, this, nullptr);
         delete gameMap;
         gameMap = nullptr;
     }
 
-    // 5. 清理 scene 内的图形项（只用 clear，不手动 delete）
-    if (scene) {
-        qDebug() << "Clearing scene items safely";
-        scene->clear(); // 自动删除所有 QGraphicsItem
+    // 6. 清理倒计时文本
+    if (countdownText) {
+        if (scene && scene->items().contains(countdownText)) {
+            scene->removeItem(countdownText);
+        }
+        countdownText = nullptr;
     }
 
-    // 6. 移除 view
+    // 7. 清理 scene 和 view
     if (view && centralWidget() == view) {
         qDebug() << "Removing view from central widget";
         setCentralWidget(nullptr);
-    }
 
-    // 7. 删除 view 和 scene
-    if (view) {
-        qDebug() << "Deleting view and its scene";
-        view->setScene(nullptr);
-        delete view;   // 会同时 delete 绑定的 scene
+        // 先设置scene为nullptr，再删除view
+        if (view->scene()) {
+            view->setScene(nullptr);
+        }
+
+        delete view;
         view = nullptr;
         scene = nullptr;
     } else if (scene) {
+        // 如果view不存在但scene存在
         delete scene;
         scene = nullptr;
     }
+
+    // 8. 重置其他状态
+    lastActivatedBox = nullptr;
+    countdownTime = initialCountdownTime;
 
     qDebug() << "=== Finished cleanupGameResources ===";
     isCleaningUp = false;
 }
 
-
 /* ---------------------- 回到主菜单 ---------------------- */
+// void MainWindow::resetToTitleScreen()
+// {
+//     qDebug() << "=== Starting resetToTitleScreen ===";
+
+//     // 暂停所有活动
+//     isPaused = true;
+
+//     // 清理游戏资源
+//     cleanupGameResources();
+
+//     // 确保处理完所有待处理的事件
+//     QCoreApplication::processEvents();
+
+//     // 重新创建 startMenu
+//     if (startMenu) {
+//         qDebug() << "Deleting existing startMenu";
+//         startMenu->deleteLater();
+//         startMenu = nullptr;
+//     }
+
+//     // 添加调试信息
+//     qDebug() << "Creating new StartMenu";
+//     startMenu = new StartMenu(this);
+
+//     // 检查 StartMenu 是否创建成功
+//     if (!startMenu) {
+//         qDebug() << "Failed to create StartMenu!";
+//         return;
+//     }
+
+//     // 重新连接信号
+//     connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
+//     connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
+
+//     qDebug() << "Setting central widget to start menu";
+//     setCentralWidget(startMenu);
+
+//     // 重置状态
+//     isPaused = false;
+
+//     // 强制刷新界面
+//     update();
+//     repaint();
+
+//     qDebug() << "=== Finished resetToTitleScreen ===";
+// }
+
 void MainWindow::resetToTitleScreen()
 {
     qDebug() << "=== Starting resetToTitleScreen ===";
 
-    // 直接清理，不需要延迟
+    // 最简单的方法：直接重新创建所有东西
     cleanupGameResources();
 
-    // 确保startMenu仍然有效
-    if (!startMenu) {
-        qDebug() << "Error: startMenu is null, recreating";
-        startMenu = new StartMenu(this);
-        connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
-        connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
-    }
+    // 创建新的 startMenu
+    startMenu = new StartMenu(this);
+    connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
+    connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
 
-    qDebug() << "Setting central widget to start menu";
     setCentralWidget(startMenu);
 
-    // 强制刷新界面
-    update();
-    repaint();
     qDebug() << "=== Finished resetToTitleScreen ===";
 }
 
@@ -499,24 +573,47 @@ void MainWindow::onSaveGame()
     for (Character* c : characters) c->isPaused = false;
 }
 
+// void MainWindow::onLoadGame()
+// {
+//     isPaused = true;
+//     for (Character* c : characters) c->isPaused = true;
+
+//     if (characters.isEmpty()) {
+//         QMessageBox::warning(this, tr("加载游戏"), tr("没有可用的角色"));
+//         return;
+//     }
+
+//     QString filename = QFileDialog::getOpenFileName(this, tr("加载游戏"), QDir::currentPath(), tr("连连看存档 (*.lksav)"));
+//     if (!filename.isEmpty()) {
+//         if (saveManager.loadGame(filename, *gameMap, characters, countdownTime)) {
+//             QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
+//             if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+//             for (Character* character : characters) {
+//                 character->getCharacterScore()->updateText();
+//             }
+//         }
+//     }
+
+//     isPaused = false;
+//     for (Character* c : characters) c->isPaused = false;
+// }
+
 void MainWindow::onLoadGame()
 {
     isPaused = true;
     for (Character* c : characters) c->isPaused = true;
 
-    if (characters.isEmpty()) {
-        QMessageBox::warning(this, tr("加载游戏"), tr("没有可用的角色"));
-        return;
-    }
-
     QString filename = QFileDialog::getOpenFileName(this, tr("加载游戏"), QDir::currentPath(), tr("连连看存档 (*.lksav)"));
     if (!filename.isEmpty()) {
+        // 直接调用现有的加载方法，但检查返回值
         if (saveManager.loadGame(filename, *gameMap, characters, countdownTime)) {
             QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
             if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
             for (Character* character : characters) {
                 character->getCharacterScore()->updateText();
             }
+        } else {
+            // 加载失败，已经通过errorOccurred信号显示了错误信息
         }
     }
 
