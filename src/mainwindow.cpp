@@ -240,18 +240,19 @@ void MainWindow::cleanupGameResources()
         countdownText = nullptr;
     }
 
-    // 6. 清理地图 (Map 不是 QObject，需要直接删除)
-    if (gameMap) {
-        delete gameMap; // 直接删除
-        gameMap = nullptr;
-    }
-
-    // 7. 清理 view 和 scene (QGraphicsView 是 QObject，可以使用 deleteLater)
+    // 6. 清理 view 和 scene (QGraphicsView 是 QObject，可以使用 deleteLater)
     if (view) {
         setCentralWidget(nullptr);
         view->deleteLater();
         view = nullptr;
         scene = nullptr;
+    }
+
+    // 7. 清理地图 (Map 不是 QObject，需要直接删除)
+    // 在 scene 清理之后，否则 m_tools 和 m_boxes 内的对象会内存泄漏
+    if (gameMap) {
+        delete gameMap; // 直接删除
+        gameMap = nullptr;
     }
 
     // 8. 重置状态
@@ -637,17 +638,27 @@ void MainWindow::showGameOverDialog()
 {
     qDebug() << "=== Starting showGameOverDialog ===";
 
-    // 立即停止所有活动
+    // 1. 先停止所有活动，但不要立即清理
     isPaused = true;
 
-    if (countdownTimer) countdownTimer->stop();
-    if (powerUpSpawnTimer) powerUpSpawnTimer->stop();
+    if (countdownTimer) {
+        countdownTimer->stop();
+        disconnect(countdownTimer, nullptr, this, nullptr);
+    }
 
-    // 使用最简单的消息框
+    if (powerUpSpawnTimer) {
+        powerUpSpawnTimer->stop();
+        disconnect(powerUpSpawnTimer, nullptr, this, nullptr);
+    }
+
+    // 2. 显示游戏结束对话框
     QMessageBox::information(this, "Game Over", "采集完毕~\n今天也是干劲十足");
 
-    qDebug() << "Resetting to title screen from game over";
-    resetToTitleScreen();
+    // 3. 使用单次定时器延迟重置，确保当前调用栈完成
+    QTimer::singleShot(100, this, [this]() {
+        qDebug() << "Delayed reset to title screen";
+        resetToTitleScreen();
+    });
 
     qDebug() << "=== Finished showGameOverDialog ===";
 }

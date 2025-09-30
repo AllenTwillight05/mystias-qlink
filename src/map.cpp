@@ -35,12 +35,18 @@ Map::Map(int rows, int cols, int typeCount,
 //     delete[] disOrder;
 // }
 
+// map.cpp 中的析构函数
 Map::~Map()
 {
     qDebug() << "Map destructor called";
-    // 不要删除 boxes，让 scene 管理
+
+    // 安全清理 boxes - 让 scene 管理它们的生命周期
+    // 不要直接删除 boxes，因为它们已经被 scene 管理，仅仅移除
+    // 此行只清空了QList<Box*>指针容器，Box对象本身仍然存在于scene中，当scene被删除时，它仍然会删除这些 Box对象
+    // 因此在mainWindow中先清理scene再把m_boxes和m_tools数组清空（此时内部对象已经析构）
     m_boxes.clear();
     m_tools.clear();
+
     delete[] disOrder;
     disOrder = nullptr;
 }
