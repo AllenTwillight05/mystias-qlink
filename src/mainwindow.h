@@ -59,7 +59,7 @@ private:
     // 地图与网格
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
-    int yNum = 4, xNum = 3, typeNum = 3;
+    int yNum = 4, xNum = 6, typeNum = 4;
     Map* gameMap = nullptr;
 
     // 交互相关
@@ -67,7 +67,7 @@ private:
     QGraphicsPathItem* currentPathItem = nullptr;
 
     // 倒计时
-    int initialCountdownTime = 60;
+    int initialCountdownTime = 120;
     int countdownTime = 0;
     QGraphicsTextItem* countdownText = nullptr;
     QTimer* countdownTimer = nullptr;

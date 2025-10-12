@@ -65,25 +65,53 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     qDebug() << "MainWindow destructor called";
-    // 彻底清理游戏资源（StartMenu 由 parent 自动删除）
+    // 清理游戏资源（StartMenu 由 parent 自动删除）
     cleanupGameResources();
 }
 
-/* ---------------------- 辅助：场景默认设置 ---------------------- */
+// 辅助函数，在startGame()中传入空场景scene，为scene添加3层QPixmap贴图
 void MainWindow::setupSceneDefaults(QGraphicsScene *s)
 {
     if (!s) return;
     s->setSceneRect(0, 0, mapWidth, mapHeight);
-    s->setBackgroundBrush(QColorConstants::Svg::antiquewhite);
+    s->setBackgroundBrush(QColorConstants::Svg::darkolivegreen);
 
-    QPixmap bgPixmap(":/assets/background.jpg");
-    if (!bgPixmap.isNull()) {
-        QGraphicsPixmapItem *bgItem = s->addPixmap(bgPixmap);
+    QPixmap bgPixmap_bottom(":/assets/background_bottom.png");
+    if (!bgPixmap_bottom.isNull()) {
+        QGraphicsPixmapItem *bgItem = s->addPixmap(bgPixmap_bottom);
+
+        // 计算居中位置
+        qreal x = (mapWidth - bgPixmap_bottom.width()) / 2.0;  // 相当于(800-1200)/2 = -200
+        qreal y = (mapHeight - bgPixmap_bottom.height()) / 2.0; // 相当于(600-675)/2 = -37.5
+
+        bgItem->setPos(x, y);  // 背景图居中，部分超出场景边界
         bgItem->setZValue(-100);
+    }
+
+    QPixmap bgPixmap_mid(":/assets/background_mid.png");
+    if (!bgPixmap_mid.isNull()) {
+        QGraphicsPixmapItem *bgItem = s->addPixmap(bgPixmap_mid);
+
+        qreal x = (mapWidth - bgPixmap_mid.width()) / 2.0;
+        qreal y = (mapHeight - bgPixmap_mid.height()) / 2.0;
+
+        bgItem->setPos(x, y);
+        bgItem->setZValue(100);
+    }
+
+    QPixmap bgPixmap_top(":/assets/background_top.png");
+    if (!bgPixmap_top.isNull()) {
+        QGraphicsPixmapItem *bgItem = s->addPixmap(bgPixmap_top);
+
+        qreal x = (mapWidth - bgPixmap_top.width()) / 2.0;
+        qreal y = (mapHeight - bgPixmap_top.height()) / 2.0;
+
+        bgItem->setPos(x, y);
+        bgItem->setZValue(101);
     }
 }
 
-/* ---------------------- 开始游戏：创建 scene/view/map/角色 ---------------------- */
+// 开始游戏：创建 scene/view/map/角色。作为startMenu发出信号的slot函数（lambda表达式作为slot）
 void MainWindow::startGame(int playerCount)
 {
     qDebug() << "=== Starting game with" << playerCount << "players ===";
@@ -98,6 +126,7 @@ void MainWindow::startGame(int playerCount)
     scene = new QGraphicsScene(this);
     setupSceneDefaults(scene);
 
+    // 抗锯齿与性能
     view = new QGraphicsView(scene, this);
     view->setRenderHint(QPainter::Antialiasing);
     view->setRenderHint(QPainter::TextAntialiasing);
@@ -112,9 +141,8 @@ void MainWindow::startGame(int playerCount)
     // 初始化道具管理器
     powerUpManager = new PowerUpManager(this);
 
-    // 创建地图并加入场景
+    // 创建box地图并加入场景
     gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
-    gameMap->addToScene();
 
     // 初始化道具管理器（依赖 map）
     powerUpManager->initialize(gameMap, scene);
@@ -153,9 +181,9 @@ void MainWindow::startGame(int playerCount)
     // 倒计时文本
     countdownTime = initialCountdownTime;
     countdownText = scene->addText(QString("Time：%1").arg(countdownTime));
-    countdownText->setDefaultTextColor(QColorConstants::Svg::saddlebrown);
+    countdownText->setDefaultTextColor(QColorConstants::Svg::burlywood);
     countdownText->setFont(QFont("Consolas", 20, QFont::Bold));
-    countdownText->setZValue(100);
+    countdownText->setZValue(102);
     countdownText->setPos(20, 20);
 
     // 连接倒计时
@@ -178,6 +206,11 @@ void MainWindow::cleanupGameResources()
     isCleaningUp = true;
 
     qDebug() << "=== Starting cleanupGameResources ===";
+
+    // 0. 消除 menuBar
+    if (menuBar()) {
+        menuBar()->clear();
+    }
 
     // 1. 停止所有定时器
     if (countdownTimer) {
@@ -266,54 +299,6 @@ void MainWindow::cleanupGameResources()
     qDebug() << "=== Finished cleanupGameResources ===";
     isCleaningUp = false;
 }
-
-/* ---------------------- 回到主菜单 ---------------------- */
-// void MainWindow::resetToTitleScreen()
-// {
-//     qDebug() << "=== Starting resetToTitleScreen ===";
-
-//     // 暂停所有活动
-//     isPaused = true;
-
-//     // 清理游戏资源
-//     cleanupGameResources();
-
-//     // 确保处理完所有待处理的事件
-//     QCoreApplication::processEvents();
-
-//     // 重新创建 startMenu
-//     if (startMenu) {
-//         qDebug() << "Deleting existing startMenu";
-//         startMenu->deleteLater();
-//         startMenu = nullptr;
-//     }
-
-//     // 添加调试信息
-//     qDebug() << "Creating new StartMenu";
-//     startMenu = new StartMenu(this);
-
-//     // 检查 StartMenu 是否创建成功
-//     if (!startMenu) {
-//         qDebug() << "Failed to create StartMenu!";
-//         return;
-//     }
-
-//     // 重新连接信号
-//     connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
-//     connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
-
-//     qDebug() << "Setting central widget to start menu";
-//     setCentralWidget(startMenu);
-
-//     // 重置状态
-//     isPaused = false;
-
-//     // 强制刷新界面
-//     update();
-//     repaint();
-
-//     qDebug() << "=== Finished resetToTitleScreen ===";
-// }
 
 void MainWindow::resetToTitleScreen()
 {
@@ -503,7 +488,7 @@ void MainWindow::handleActivation(Box* box, Character* sender)
         if (pts.size() >= 2 && scene) {
             QPainterPath path(pts[0]);
             for (int i = 1; i < pts.size(); ++i) path.lineTo(pts[i]);
-            QPen pen(QColor(255, 223, 128), 10);
+            QPen pen(QColor(155, 123, 128), 10);
             pen.setJoinStyle(Qt::RoundJoin);
             pen.setCapStyle(Qt::RoundCap);
 

@@ -1,6 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>assets/background.jpg</file>
         <file>assets/sprites0.png</file>
         <file>assets/wellington.png</file>
         <file>assets/recipe.png</file>
@@ -10,5 +9,8 @@
         <file>assets/start_menu_bg.png</file>
         <file>assets/tpicon.png</file>
         <file>assets/tpicon.ico</file>
+        <file>assets/background_bottom.png</file>
+        <file>assets/background_top.png</file>
+        <file>assets/background_mid.png</file>
     </qresource>
 </RCC>

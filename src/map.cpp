@@ -5,8 +5,7 @@
 #include <random>
 #include <algorithm>
 
-// ================= 构造 / 析构 =================
-
+// 构造，传入行、列、方块种类、spritesheet贴图、所在场景、单帧方形贴图边长（pix)
 Map::Map(int rows, int cols, int typeCount,
          const QString &spriteSheetPath,
          QGraphicsScene *scene, int frameSize)
@@ -22,26 +21,16 @@ Map::Map(int rows, int cols, int typeCount,
     disOrder(nullptr)
 {
     initMap();
+    addToScene();
 }
 
-// Map::~Map()
-// {
-//     for (Box* b : m_boxes) {
-//         if (b) {
-//             m_scene->removeItem(b);
-//             delete b;
-//         }
-//     }
-//     delete[] disOrder;
-// }
-
-// map.cpp 中的析构函数
+// 析构
 Map::~Map()
 {
     qDebug() << "Map destructor called";
 
     // 安全清理 boxes - 让 scene 管理它们的生命周期
-    // 不要直接删除 boxes，因为它们已经被 scene 管理，仅仅移除
+    // 不直接删除 boxes，因为它们已经被 scene 管理，仅仅移除
     // 此行只清空了QList<Box*>指针容器，Box对象本身仍然存在于scene中，当scene被删除时，它仍然会删除这些 Box对象
     // 因此在mainWindow中先清理scene再把m_boxes和m_tools数组清空（此时内部对象已经析构）
     m_boxes.clear();
@@ -76,18 +65,17 @@ QVector<QPointF> Map::cellsToScene(const QVector<QPoint>& cells) const {
     return result;
 }
 
-// ================= 初始化地图 =================
-
+// 辅助构造函数1：初始化地图，对spritesheet随机选择typecount帧编号，并与空格编号一起随机生成在地图二维数组m_map中
 void Map::initMap()
 {
-    disOrder = new int[m_typeCount + 1];    //多加一个的位置赋-1，对应空格
+    disOrder = new int[m_typeCount + 1];    //乱序数组，存储随机到的box编号以及空格多（赋-1）
     for (int i = 0; i < m_typeCount; ++i) {
-        //disOrder[i] = QRandomGenerator::global()->bounded(164);    // 精灵图参数：recipe
-        disOrder[i] = QRandomGenerator::global()->bounded(62);    // 精灵图参数：ingridient
+        //disOrder[i] = QRandomGenerator::global()->bounded(164);    // 精灵图recipe：164帧
+        disOrder[i] = QRandomGenerator::global()->bounded(62);    // 精灵图参数ingridient：62帧
     }
     disOrder[m_typeCount] = -1;
 
-    m_map.resize(m_rows);
+    m_map.resize(m_rows);   // 二维数组m_map设置行数
     for (int i = 0; i < m_rows; i++) {
         m_map[i].resize(m_cols);
         for (int j = 0; j < m_cols; j++) {
@@ -97,39 +85,25 @@ void Map::initMap()
     }
 }
 
-QPixmap Map::getSpriteByType(int typeId)
-{
-    QPixmap spriteSheet(m_spriteSheetPath);
-    if (spriteSheet.isNull()) {
-        qWarning() << "Failed to load sprite sheet:" << m_spriteSheetPath;
-        return QPixmap();
-    }
-
-    const int cols = spriteSheet.width() / m_frameSize;
-    int row = typeId / cols;
-    int col = typeId % cols;
-
-    QRect sourceRect(col * m_frameSize, row * m_frameSize,
-                     m_frameSize, m_frameSize);
-    return spriteSheet.copy(sourceRect);
-}
-
+// 辅助构造函数2： 按照m_map在scene中添加实体贴图
 void Map::addToScene()
 {
+    // 计算scene中地图大小（pix）（“网格”中“结点”处放置box，“格子”为spacing占空）
     int totalWidth  = (m_cols - 1) * spacing;
     int totalHeight = (m_rows - 1) * spacing;
 
-    QRectF sceneRect = m_scene->sceneRect();
+    // 设置 offset确保地图在scene中居中
+    QRectF sceneRect = m_scene->sceneRect();    // 浮点数矩形，包括左上坐标与长宽
     QPointF sceneCenter = sceneRect.center();
-
     qreal offsetX = sceneCenter.x() - totalWidth  / 2.0;
     qreal offsetY = sceneCenter.y() - totalHeight / 2.0;
 
+    // 在“网格”结点上放置裁切后的spritesheet帧
     for (int i = 0; i < m_rows; i++) {
         for (int j = 0; j < m_cols; j++) {
             int typeId = m_map[i][j];
             if(typeId == -1) continue;
-            QPixmap sprite = getSpriteByType(typeId);
+            QPixmap sprite = getSpriteByType(typeId);   // 裁切
             if(sprite.isNull()) continue;
 
             QPointF pos(offsetX + j * spacing,
@@ -143,6 +117,25 @@ void Map::addToScene()
             m_boxes.append(box);
         }
     }
+}
+
+// spritesheet裁切，传入帧序号，返回相应帧（只要传入的m_frameSize与传入的spritesheet相匹配，可动态适应行列帧数）
+QPixmap Map::getSpriteByType(int typeId)
+{
+    QPixmap spriteSheet(m_spriteSheetPath);
+    if (spriteSheet.isNull()) {
+        qWarning() << "Failed to load sprite sheet:" << m_spriteSheetPath;
+        return QPixmap();
+    }
+
+    const int cols = spriteSheet.width() / m_frameSize;
+    int row = typeId / cols;
+    int col = typeId % cols;
+
+    // 裁切
+    QRect sourceRect(col * m_frameSize, row * m_frameSize,
+                     m_frameSize, m_frameSize);
+    return spriteSheet.copy(sourceRect);
 }
 
 // 读档设置地图数据
