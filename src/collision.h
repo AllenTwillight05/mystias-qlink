@@ -7,8 +7,8 @@ class QGraphicsItem;
 class Collision
 {
 public:
-    // 检查两个物体是否碰撞（基于矩形边界框）（基于Qt内置方法）
-    static bool checkCollision(const QGraphicsItem* item1, const QGraphicsItem* item2);
+    // 检查两个物体是否碰撞（基于矩形边界框）（基于Qt内置方法）    //弃用
+    //static bool checkCollision(const QGraphicsItem* item1, const QGraphicsItem* item2);
 
     // 检查点与物体是否碰撞
     static bool checkPointCollision(const QPointF& point, const QGraphicsItem* item, qreal boxSize);

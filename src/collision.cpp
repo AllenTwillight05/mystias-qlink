@@ -2,10 +2,11 @@
 #include <QGraphicsItem>
 #include <cmath>
 
-bool Collision::checkCollision(const QGraphicsItem* item1, const QGraphicsItem* item2)
-{
-    return item1->collidesWithItem(item2);//内置矩形边框检测
-}
+// 弃用
+// bool Collision::checkCollision(const QGraphicsItem* item1, const QGraphicsItem* item2)
+// {
+//     return item1->collidesWithItem(item2);//内置矩形边框检测
+// }
 
 bool Collision::checkPointCollision(const QPointF& point, const QGraphicsItem* item, qreal boxSize)
 {
