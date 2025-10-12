@@ -8,10 +8,10 @@
 
 SaveGameManager::SaveGameManager(QObject* parent) : QObject(parent) {}
 
-// savegamemanager.cpp
+// 存档逻辑，传入存档文件名、地图指针、角色列表、剩余时间，存储成功则返回true
 bool SaveGameManager::saveGame(const QString &filename,
                                Map &gameMap,
-                               QVector<Character*> &characters, // 改为接收角色列表
+                               QVector<Character*> &characters,
                                int countdownTime)
 {
     QFile file(filename);
@@ -20,6 +20,7 @@ bool SaveGameManager::saveGame(const QString &filename,
         return false;
     }
 
+    // 结构体，包含二维int数组mapData（序号+空）、QPointF数组characterPositions、分数数组scores和剩余时间countdownTime
     GameSaveData saveData;
     saveData.mapData = gameMap.getMapData();
 
@@ -27,16 +28,18 @@ bool SaveGameManager::saveGame(const QString &filename,
     for (Character* character : characters) {
         saveData.characterPositions.append(character->getPosition());
         saveData.scores.append(character->getCharacterScore()->getScore());
+        // getCharacterScore()返回的是character类对象的成员：score指针，故需要再调用score类的getScore()返回分数值
     }
 
     saveData.countdownTime = countdownTime;
 
-    QDataStream out(&file); //类似std::ofstream out("file.txt");out <<...;
+    QDataStream out(&file); //类似std::ofstream out("file.txt");  out <<...;
     out.setVersion(QDataStream::Qt_5_15);
 
-    out << QLINK_FILE_SIGNATURE;
-    out << SAVE_FILE_VERSION;
-    out << saveData;    //已经重载过<<运算符，故不用把saveData.mapData等一行行拆开写    //由于返回了重载时返回了out，这里也可以三行并一行写
+    // 写入
+    out << QLINK_FILE_SIGNATURE;    // 文件魔数
+    out << SAVE_FILE_VERSION;       // 版本
+    out << saveData;    // 已经重载过<<运算符，故不用把saveData.mapData等一行行拆开写    //由于返回了重载时返回了out，这里也可以三行并一行写
 
     file.close();
     return true;

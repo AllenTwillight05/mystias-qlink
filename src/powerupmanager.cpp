@@ -23,6 +23,7 @@ PowerUpManager::~PowerUpManager()
     deactivateHint();
 }
 
+// 初始化
 void PowerUpManager::initialize(Map* map, QGraphicsScene* scene)
 {
     gameMap = map;

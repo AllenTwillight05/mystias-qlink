@@ -132,7 +132,7 @@ void MainWindow::startGame(int playerCount)
     view->setRenderHint(QPainter::TextAntialiasing);
     view->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
 
-    // 切换 central widget
+    // 切换central widget从startMenu到view
     setCentralWidget(view);
 
     // 创建菜单
@@ -515,14 +515,14 @@ void MainWindow::handleActivation(Box* box, Character* sender)
     }
 }
 
-/* ---------------------- 菜单（返回主菜单 / 退出程序 / 保存/加载 等） ---------------------- */
+// 游戏界面顶部menubar，通过connect实现逻辑功能
 void MainWindow::createMenu()
 {
     menuBar()->clear();
 
-    QMenu *gameMenu = menuBar()->addMenu(tr("选项"));
+    QMenu *gameMenu = menuBar()->addMenu(tr("选项")); //tr()为翻译函数，后续可使用lupdate提取文本生成.ts并编写对照翻译
 
-    QAction *saveAction = new QAction(tr("保存游戏"), this);
+    QAction *saveAction = new QAction(tr("保存游戏"), this);    //QAction为动作类，此处通过gameMenu->addAction()添加到菜单项
     connect(saveAction, &QAction::triggered, this, &MainWindow::onSaveGame);
     gameMenu->addAction(saveAction);
 
@@ -547,9 +547,10 @@ void MainWindow::createMenu()
     gameMenu->addAction(quitAction);
 }
 
-/* ---------------------- 保存 / 加载（保留你原来的逻辑） ---------------------- */
+// 保存，通过connect到菜单项由&QAction::triggered信号触发
 void MainWindow::onSaveGame()
 {
+    // 存档操作时暂停
     isPaused = true;
     for (Character* c : characters) c->isPaused = true;
 
@@ -558,6 +559,7 @@ void MainWindow::onSaveGame()
         return;
     }
 
+    // 存档弹窗，补全后缀，提示成功保存
     QString filename = QFileDialog::getSaveFileName(this, tr("保存游戏"), QDir::currentPath(), tr("连连看存档 (*.lksav)"));
     if (!filename.isEmpty()) {
         if (!filename.endsWith(".lksav")) filename += ".lksav";
@@ -566,34 +568,10 @@ void MainWindow::onSaveGame()
         }
     }
 
+    // 游戏继续
     isPaused = false;
     for (Character* c : characters) c->isPaused = false;
 }
-
-// void MainWindow::onLoadGame()
-// {
-//     isPaused = true;
-//     for (Character* c : characters) c->isPaused = true;
-
-//     if (characters.isEmpty()) {
-//         QMessageBox::warning(this, tr("加载游戏"), tr("没有可用的角色"));
-//         return;
-//     }
-
-//     QString filename = QFileDialog::getOpenFileName(this, tr("加载游戏"), QDir::currentPath(), tr("连连看存档 (*.lksav)"));
-//     if (!filename.isEmpty()) {
-//         if (saveManager.loadGame(filename, *gameMap, characters, countdownTime)) {
-//             QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
-//             if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
-//             for (Character* character : characters) {
-//                 character->getCharacterScore()->updateText();
-//             }
-//         }
-//     }
-
-//     isPaused = false;
-//     for (Character* c : characters) c->isPaused = false;
-// }
 
 void MainWindow::onLoadGame()
 {
