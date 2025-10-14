@@ -187,6 +187,8 @@ void Character::updateAnimation() {
     updateCharacterSprite();
 }
 
+// 处理按下按键后运动方向和起步动画帧
+// 上下左右键对应int值通过void setControls()赋给每个character对象
 void Character::handleKeyPress(QKeyEvent* event) {
     if (event->isAutoRepeat()) return;
 
@@ -201,6 +203,7 @@ void Character::handleKeyPress(QKeyEvent* event) {
     }
 }
 
+// 处理松开按键后停止
 void Character::handleKeyRelease(QKeyEvent* event) {
     if (event->isAutoRepeat()) return;
 
@@ -212,6 +215,7 @@ void Character::handleKeyRelease(QKeyEvent* event) {
     }
 }
 
+// 辅助析构函数，停止和disconnect移动和动作两个计时器
 void Character::stopTimers() {
     qDebug() << "Stopping character timers safely";
     if (movementTimer) {

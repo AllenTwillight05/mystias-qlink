@@ -27,6 +27,7 @@
 #include <QDebug>
 #include <QDialog>
 
+// mainwindow类构造函数
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
     startMenu(new StartMenu(this)),
@@ -62,6 +63,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 }
 
+// mainwindow类析构函数
 MainWindow::~MainWindow()
 {
     qDebug() << "MainWindow destructor called";
@@ -69,7 +71,7 @@ MainWindow::~MainWindow()
     cleanupGameResources();
 }
 
-// 辅助函数，在startGame()中传入空场景scene，为scene添加3层QPixmap贴图
+// 新建场景辅助函数，在startGame()中传入空场景scene，为scene添加3层QPixmap贴图
 void MainWindow::setupSceneDefaults(QGraphicsScene *s)
 {
     if (!s) return;
@@ -139,7 +141,7 @@ void MainWindow::startGame(int playerCount)
     createMenu();
 
     // 初始化道具管理器
-    powerUpManager = new PowerUpManager(this);
+    powerUpManager = new PowerUpManager(this);  //传入this作为PowerUpManager的父类，便于析构时候的内存管理
 
     // 创建box地图并加入场景
     gameMap = new Map(yNum, xNum, typeNum, ":/assets/ingredient.png", scene, 26);
@@ -162,7 +164,7 @@ void MainWindow::startGame(int playerCount)
     if (playerCount >= 2) {
         Character* character2 = new Character(":/assets/sprites1.png", this);
         character2->setPos(mapWidth/5*4, mapHeight/5*4);
-        character2->setControls({ Qt::Key_I, Qt::Key_K, Qt::Key_J, Qt::Key_L });
+        character2->setControls({ Qt::Key_Up, Qt::Key_Down, Qt::Key_Left, Qt::Key_Right });
         character2->setGameMap(gameMap);
         scene->addItem(character2);
         connect(character2, &Character::collidedWithBox, this, &MainWindow::handleActivation);
@@ -170,7 +172,7 @@ void MainWindow::startGame(int playerCount)
         qDebug() << "Created player 2";
     }
 
-    // 道具生成定时器
+    // 道具生成定时器（每15s生成1个）
     powerUpSpawnTimer = new QTimer(this);
     connect(powerUpSpawnTimer, &QTimer::timeout, this, [this]() {
         if (powerUpManager) powerUpManager->spawnPowerUp(QRandomGenerator::global()->bounded(3) + 1);
@@ -186,7 +188,7 @@ void MainWindow::startGame(int playerCount)
     countdownText->setZValue(102);
     countdownText->setPos(20, 20);
 
-    // 连接倒计时
+    // 连接倒计时，如果已经存在先消除
     if (countdownTimer) {
         countdownTimer->stop();
         disconnect(countdownTimer, nullptr, this, nullptr);
@@ -198,7 +200,7 @@ void MainWindow::startGame(int playerCount)
     qDebug() << "=== Game started successfully ===";
 }
 
-/* ---------------------- 清理游戏资源，保证顺序与安全 ---------------------- */
+// 按顺序清理游戏资源
 void MainWindow::cleanupGameResources()
 {
     static bool isCleaningUp = false;
@@ -215,7 +217,7 @@ void MainWindow::cleanupGameResources()
     // 1. 停止所有定时器
     if (countdownTimer) {
         countdownTimer->stop();
-        disconnect(countdownTimer, nullptr, this, nullptr);
+        disconnect(countdownTimer, nullptr, this, nullptr); // 断开 this 的所有连接（从任何发送者）
     }
 
     if (powerUpSpawnTimer) {
@@ -225,7 +227,7 @@ void MainWindow::cleanupGameResources()
         powerUpSpawnTimer = nullptr;
     }
 
-    // 2. 停用道具管理器
+    // 2. 停用道具类powerUpManager
     if (powerUpManager) {
         powerUpManager->deactivateHint();
         powerUpManager->deleteLater();
@@ -249,7 +251,9 @@ void MainWindow::cleanupGameResources()
                 scene->removeItem(character);
             }
 
-            // 使用 deleteLater 而不是立即删除
+            // 使用 deleteLater() 而不是立即删除
+            // 避免在事件处理中间删除对象。
+            // deleteLater()将一个延迟删除事件（QDeferredDeleteEvent）放入事件队列中。当事件循环处理到这个事件时，它会安全地删除该对象。
             character->deleteLater();
         }
     }
@@ -282,7 +286,7 @@ void MainWindow::cleanupGameResources()
     }
 
     // 7. 清理地图 (Map 不是 QObject，需要直接删除)
-    // 在 scene 清理之后，否则 m_tools 和 m_boxes 内的对象会内存泄漏
+    // 在 scene 清理之后，否则先清理导致 m_tools 和 m_boxes 内的对象丢失，内存泄漏
     if (gameMap) {
         delete gameMap; // 直接删除
         gameMap = nullptr;
@@ -300,6 +304,7 @@ void MainWindow::cleanupGameResources()
     isCleaningUp = false;
 }
 
+// 返回主菜单界面
 void MainWindow::resetToTitleScreen()
 {
     qDebug() << "=== Starting resetToTitleScreen ===";
@@ -394,6 +399,7 @@ void MainWindow::addCountdownTime(int seconds)
     if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 }
 
+// 暂停与继续切换
 void MainWindow::togglePause()
 {
     isPaused = !isPaused;
@@ -547,7 +553,7 @@ void MainWindow::createMenu()
     gameMenu->addAction(quitAction);
 }
 
-// 保存，通过connect到菜单项由&QAction::triggered信号触发
+// 存档，通过connect到菜单项由&QAction::triggered信号触发
 void MainWindow::onSaveGame()
 {
     // 存档操作时暂停
@@ -573,14 +579,24 @@ void MainWindow::onSaveGame()
     for (Character* c : characters) c->isPaused = false;
 }
 
+// 读档，通过connect到菜单项由&QAction::triggered信号触发
 void MainWindow::onLoadGame()
 {
     isPaused = true;
     for (Character* c : characters) c->isPaused = true;
 
+    // getOpenFileName完整文件路径到filename
     QString filename = QFileDialog::getOpenFileName(this, tr("加载游戏"), QDir::currentPath(), tr("连连看存档 (*.lksav)"));
+
     if (!filename.isEmpty()) {
-        // 直接调用现有的加载方法，但检查返回值
+        qDebug() << "Selected file path:" << filename;
+        QFileInfo fileInfo(filename);
+        qDebug() << "Absolute path:" << fileInfo.absoluteFilePath();
+        qDebug() << "Exists:" << fileInfo.exists();
+    }
+
+    if (!filename.isEmpty()) {
+        // 调用现有的加载方法，并检查返回值
         if (saveManager.loadGame(filename, *gameMap, characters, countdownTime)) {
             QMessageBox::information(this, tr("加载游戏"), tr("游戏已成功加载!"));
             if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
@@ -596,7 +612,7 @@ void MainWindow::onLoadGame()
     for (Character* c : characters) c->isPaused = false;
 }
 
-/* ---------------------- Game Over 弹窗 ---------------------- */
+// Game Over弹窗
 void MainWindow::showGameOverDialog()
 {
     qDebug() << "=== Starting showGameOverDialog ===";

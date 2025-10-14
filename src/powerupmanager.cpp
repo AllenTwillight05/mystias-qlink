@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QPixmap>
 
+// 道具管理器类构造函数，传入父类
 PowerUpManager::PowerUpManager(QObject* parent)
     : QObject(parent)
 {
@@ -18,18 +19,20 @@ PowerUpManager::PowerUpManager(QObject* parent)
     connect(hintUpdateTimer, &QTimer::timeout, this, &PowerUpManager::updateHintPair);
 }
 
+// 析构函数，取消hint的10s效果，其余析构交给父类mainWindow对象
 PowerUpManager::~PowerUpManager()
 {
     deactivateHint();
 }
 
-// 初始化
+// 初始化道具管理器类，传入map对象指针和场景scene指针（
 void PowerUpManager::initialize(Map* map, QGraphicsScene* scene)
 {
     gameMap = map;
     gameScene = scene;
 }
 
+// 从道具精灵图中裁切帧，传入道具编号
 QPixmap PowerUpManager::getPowerUpSprite(int powerUpType)
 {
     QPixmap spriteSheet(powerUpSpriteSheetPath);
@@ -50,6 +53,7 @@ QPixmap PowerUpManager::getPowerUpSprite(int powerUpType)
     return spriteSheet.copy(sourceRect);
 }
 
+// 道具生成和10s后自动消除函数。传入道具编号，遍历得到空位个数，并随机选择空格插入对应序号道具box
 void PowerUpManager::spawnPowerUp(int powerUpType)
 {
     if (!gameMap || !gameScene) return;
@@ -66,6 +70,7 @@ void PowerUpManager::spawnPowerUp(int powerUpType)
                 bool occupiedByTool = false;
                 for (Box* tool : gameMap->m_tools) {
                     if (tool->row == i && tool->col == j) {
+                        //tool属于box类指针，有row和col成员
                         occupiedByTool = true;
                         break;
                     }
@@ -109,7 +114,7 @@ void PowerUpManager::spawnPowerUp(int powerUpType)
     // }
 
     // 创建道具盒子
-    Box* powerUpBox = new Box(gameMap->cellCenterPx(r, c), "", gameScene);
+    Box* powerUpBox = new Box(gameMap->cellCenterPx(r, c), "", gameScene);  // Box初始化的图片传入是QString类型地址，无法直接传QPixmap powerUpSprite
     powerUpBox->setPixmap(powerUpSprite);
     powerUpBox->setOffset(-powerUpSprite.width()/2, -powerUpSprite.height()/2);
     powerUpBox->toolType = powerUpType;  // 设置道具类型标识

@@ -42,14 +42,20 @@ public:
 
     // 获取地图数据的常量引用（避免拷贝开销）
     const QVector<QVector<int>>& getMapData() const { return m_map; };
+
     // 设置地图数据（使用常量引用传递，避免拷贝开销）
     void setMapData(const QVector<QVector<int>>& newMapData);
     int getRowCount(){ return m_rows; };
     int getColCount(){ return m_cols; };
+
     // 工具函数：坐标换算
     QPointF cellCenterPx(int r, int c) const;
 
-    void shuffleBoxes();  // 重排所有方块位置
+    // 工具函数：padding
+    void padding(QVector<QVector<int>> &grid);
+
+    // 重排所有方块位置
+    void shuffleBoxes();
 
 private:
     int m_rows;             // 行数

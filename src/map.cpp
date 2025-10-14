@@ -24,7 +24,7 @@ Map::Map(int rows, int cols, int typeCount,
     addToScene();
 }
 
-// 析构
+// 析构，只清空存储box信息的成员变量，不直接delete box对象
 Map::~Map()
 {
     qDebug() << "Map destructor called";
@@ -138,7 +138,7 @@ QPixmap Map::getSpriteByType(int typeId)
     return spriteSheet.copy(sourceRect);
 }
 
-// 读档设置地图数据
+// 读档设置地图数据，传入箱子类型序号的二维数组
 void Map::setMapData(const QVector<QVector<int>>& newMapData)
 {
     // 首先清理现有的箱子对象，避免内存泄漏
@@ -159,7 +159,7 @@ void Map::setMapData(const QVector<QVector<int>>& newMapData)
 }
 
 
-// ================= 路径判定 =================
+// 路径判定
 
 bool Map::straightConnect(int r1, int c1, int r2, int c2,
                           const QVector<QVector<int>>& grid,
@@ -246,6 +246,7 @@ bool Map::twoTurnConnect(int r1, int c1, int r2, int c2,
     return false;
 }
 
+// 判断是否可连接，传入需判断的两个箱子指针
 bool Map::canConnect(Box* a, Box* b)
 {
     if (!a || !b) return false;
@@ -257,9 +258,8 @@ bool Map::canConnect(Box* a, Box* b)
 
     //padding矩阵初始化为全-1
     QVector<QVector<int>> grid(rows + 2, QVector<int>(cols + 2, -1));
-    for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols; j++)
-            grid[i+1][j+1] = m_map[i][j];
+
+    padding(grid);
 
     //在grid中坐标a(c1,r1),b(c2,r2) （对应(x,y)但不是实际坐标，是格子序号）
     int r1 = a->row + 1, c1 = a->col + 1;
@@ -281,6 +281,13 @@ bool Map::canConnect(Box* a, Box* b)
     return false;
 }
 
+// 工具函数：padding
+void Map::padding(QVector<QVector<int>> &grid)
+{
+    for (int i = 0; i < m_rows; i++)
+        for (int j = 0; j < m_cols; j++)
+            grid[i+1][j+1] = m_map[i][j];
+}
 
 // 直接遍历 m_boxes，按 type 聚合 Box*存储在红黑树typeGroups中，然后两两调用 canConnect
 bool Map::isSolvable()
