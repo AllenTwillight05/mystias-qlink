@@ -54,7 +54,7 @@ HEADERS += src/mainwindow.h \
 
 RESOURCES += resources/resources.qrc
 
-# RC_ICONS = $$PWD/assets/tpicon.ico
+RC_ICONS = resources/assets/tpicon.ico
 
 # 添加 include 路径，让编译器能找到 src 下的头文件
 INCLUDEPATH += src
