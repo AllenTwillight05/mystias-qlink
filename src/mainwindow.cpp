@@ -240,6 +240,9 @@ void MainWindow::cleanupGameResources()
         if (character) {
             qDebug() << "Safely removing character";
 
+            // 清除预选箱子
+            character->clearLastActivatedBox();
+
             // 断开所有连接
             disconnect(character, nullptr, this, nullptr);
 
@@ -293,7 +296,6 @@ void MainWindow::cleanupGameResources()
     }
 
     // 8. 重置状态
-    lastActivatedBox = nullptr;
     countdownTime = initialCountdownTime;
     isPaused = false;
 
@@ -475,24 +477,27 @@ void MainWindow::handleActivation(Box* box, Character* sender)
 
 
     // 消除逻辑
-    if (!lastActivatedBox) {
-        lastActivatedBox = box;
+    // 获取角色自己的 lastActivatedBox
+    Box* lastBox = sender->getLastActivatedBox();
+
+    if (!lastBox) {
+        sender->setLastActivatedBox(box);
         box->activate();
         return;
     }
 
-    if (box == lastActivatedBox) return;
+    if (box == lastBox) return;
 
-    if (gameMap->canConnect(lastActivatedBox, box)) {
-        lastActivatedBox->deactivate();
+    if (gameMap->canConnect(lastBox, box)) {
+        lastBox->deactivate();
         box->deactivate();
-        gameMap->m_map[lastActivatedBox->row][lastActivatedBox->col] = -1;
+        gameMap->m_map[lastBox->row][lastBox->col] = -1;
         gameMap->m_map[box->row][box->col] = -1;
-        gameMap->getScene()->removeItem(lastActivatedBox);
-        gameMap->getScene()->removeItem(box);
-        gameMap->m_boxes.removeOne(lastActivatedBox);
+        scene->removeItem(lastBox);
+        scene->removeItem(box);
+        gameMap->m_boxes.removeOne(lastBox);
         gameMap->m_boxes.removeOne(box);
-        lastActivatedBox = nullptr;
+        sender->setLastActivatedBox(nullptr);
 
         sender->getCharacterScore()->increase(10);
 
@@ -517,8 +522,8 @@ void MainWindow::handleActivation(Box* box, Character* sender)
             });
         }
     } else {
-        lastActivatedBox->deactivate();
-        lastActivatedBox = box;
+        lastBox->deactivate();
+        sender->setLastActivatedBox(box);
         box->activate();
     }
 

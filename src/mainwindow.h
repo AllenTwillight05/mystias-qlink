@@ -63,7 +63,6 @@ private:
     Map* gameMap = nullptr;
 
     // 交互相关
-    Box* lastActivatedBox = nullptr;
     QGraphicsPathItem* currentPathItem = nullptr;
 
     // 倒计时

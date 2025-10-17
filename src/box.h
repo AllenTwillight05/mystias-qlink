@@ -3,6 +3,7 @@
 #include<QGraphicsPixmapItem>
 #include<QObject>
 
+class Character;
 class Box : public QGraphicsPixmapItem
 {
 public:
@@ -14,6 +15,8 @@ public:
     int toolType = 0;//对于道具类箱子的类型管理，1为+s
     int row;
     int col;
+
+    Character* preSelectedBy = nullptr;
 
     void activate();
     void deactivate();

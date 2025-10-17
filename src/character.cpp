@@ -115,8 +115,6 @@ void Character::updateMovement() {
                 break;
             }
 
-            // setZValue(del.y() > 0 ? 0 : 2);
-
             // 距离检测，找最近的
             QPointF del = Collision::getDistance(pos(), box->pos());
             qreal dist = Collision::EuclidDistance(del);
@@ -133,10 +131,13 @@ void Character::updateMovement() {
 
         // 最近 Box 高亮
         for (Box* box : gameMap->m_boxes) {
-            if (box == nearestBox && nearestDist < frameWidth * 0.75)
+            if (box == nearestBox && nearestDist < frameWidth * 0.75){
+                box->preSelectedBy = this;
                 box->preAct();
-            else
+            }else if (box->preSelectedBy == this) {
                 box->npreAct();
+                box->preSelectedBy = nullptr;
+            }
         }
     }
 
