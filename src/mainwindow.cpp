@@ -336,6 +336,11 @@ void MainWindow::resetToTitleScreen()
 /* ---------------------- 安全的输入事件处理 ---------------------- */
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
+    // 添加焦点设置
+    if (!hasFocus()) {
+        setFocus();
+    }
+
     if (event->key() == Qt::Key_Space) {
         togglePause();
         return;
@@ -406,7 +411,7 @@ void MainWindow::togglePause()
     for (Character* c : characters) c->isPaused = isPaused;
 }
 
-/* ---------------------- 角色与 box 交互（保留你的逻辑） ---------------------- */
+/* ---------------------- 角色与 box 交互 ---------------------- */
 void MainWindow::handleActivation(Box* box, Character* sender)
 {
     if (!box) return;
@@ -467,6 +472,7 @@ void MainWindow::handleActivation(Box* box, Character* sender)
         delete box;
         return;
     }
+
 
     // 消除逻辑
     if (!lastActivatedBox) {

@@ -39,6 +39,10 @@ public:
     void stopTimers();
     bool isPaused;
 
+    Box* getLastActivatedBox() const { return lastActivatedBox; }
+    void setLastActivatedBox(Box* box) { lastActivatedBox = box; }
+    void clearLastActivatedBox() { lastActivatedBox = nullptr; }
+
 signals:
     void collidedWithBox(Box* box, Character* sender);  // sender参数,碰撞时发射信号，交给 MainWindow 处理
 
@@ -75,6 +79,9 @@ private:
 
     // 分数对象指针
     Score* characterScore;
+
+    // 每个角色自己的最后激活盒子
+    Box* lastActivatedBox = nullptr;
 
     // debug用坐标小圆点
     bool debugMarkerEnabled = false;
