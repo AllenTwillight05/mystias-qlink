@@ -35,6 +35,8 @@ private:
 
     struct GameSaveData
     {
+        int mapRows;
+        int mapCols;
         QVector<QVector<int>> mapData;
         QVector<QPointF> characterPositions;  // 所有角色的位置
         QVector<int> scores;                  // 所有角色的分数;
@@ -42,6 +44,8 @@ private:
 
         // 序列化操作，重载入和出运算符
         friend QDataStream &operator<<(QDataStream &out, const GameSaveData &data) {    //QDataStream类似iostream但处理Qt对象，二进制格式
+            out << data.mapRows;
+            out << data.mapCols;
             out << data.mapData;
             out << data.characterPositions;
             out << data.scores;
@@ -50,6 +54,8 @@ private:
         }
 
         friend QDataStream &operator>>(QDataStream &in, GameSaveData &data) {
+            in >> data.mapRows;
+            in >> data.mapCols;
             in >> data.mapData;
             in >> data.characterPositions;
             in >> data.scores;

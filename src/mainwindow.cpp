@@ -43,7 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     powerUpManager(nullptr),
     powerUpSpawnTimer(nullptr)
 {
-    setWindowTitle("Mystia’s Ingredient Quest");
+    setWindowTitle(tr("请问您今天要来点八目鳗吗？"));
     resize(1200, 675);
 
     // 设置窗口图标
@@ -56,6 +56,12 @@ MainWindow::MainWindow(QWidget *parent)
     // 连接主菜单信号
     connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
     connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
+
+    // 连接配置信号
+    connect(startMenu, &StartMenu::configRequested, this, [this]() {
+        QMessageBox::information(this, tr("配置已更新"),
+                                 tr("新的配置将在下次游戏开始时生效"));
+    });
 
     // 连接存档管理器的错误信号
     connect(&saveManager, &SaveGameManager::errorOccurred, this, [this](const QString &message) {
@@ -123,6 +129,14 @@ void MainWindow::startGame(int playerCount)
 
     // 确保所有删除操作完成
     QCoreApplication::processEvents();
+
+    // 从startMenu获取配置参数（x,y箱子个数与种类）
+    if (startMenu) {
+        yNum = startMenu->getYNum();
+        xNum = startMenu->getXNum();
+        typeNum = startMenu->getTypeNum();
+        qDebug() << "Using config - yNum:" << yNum << "xNum:" << xNum << "typeNum:" << typeNum;
+    }
 
     // 新建 scene 和 view
     scene = new QGraphicsScene(this);
@@ -366,6 +380,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     }
 }
 
+// 按键处理（QKeyEvent::KeyRelease即处理松开）
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
     if (characters.isEmpty() || !scene || !gameMap) {
@@ -385,7 +400,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     }
 }
 
-/* ---------------------- 倒计时 ---------------------- */
+// 倒计时的暂停、终止逻辑
 void MainWindow::updateCountdown()
 {
     if (isPaused) return;
@@ -400,6 +415,7 @@ void MainWindow::updateCountdown()
     if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
 }
 
+// 增加倒计时剩余时长(用于道具+1s），传入需要增加的时长
 void MainWindow::addCountdownTime(int seconds)
 {
     countdownTime += seconds;
@@ -413,7 +429,8 @@ void MainWindow::togglePause()
     for (Character* c : characters) c->isPaused = isPaused;
 }
 
-/* ---------------------- 角色与 box 交互 ---------------------- */
+// 角色与box交互，传入碰撞的box和character对象指针
+// collidedWithBox信号的slot槽函数
 void MainWindow::handleActivation(Box* box, Character* sender)
 {
     if (!box) return;
@@ -421,9 +438,9 @@ void MainWindow::handleActivation(Box* box, Character* sender)
     // 道具类型处理
     if (box->toolType >= 1) {
         switch (box->toolType) {
-        case 1: {
-            countdownTime += 30;
-            if (countdownText) countdownText->setPlainText(QString("Time：%1").arg(countdownTime));
+        case 1: // +1s，逻辑完全在mainwindow中实现
+        {
+            addCountdownTime(30);
             QGraphicsTextItem* feedback = scene->addText("+1s");
             feedback->setDefaultTextColor(Qt::green);
             feedback->setFont(QFont("Consolas", 16, QFont::Bold));
@@ -437,7 +454,8 @@ void MainWindow::handleActivation(Box* box, Character* sender)
             });
             break;
         }
-        case 2: {
+        case 2: // shuffle，逻辑在powerupmanger中实现
+        {
             if (gameMap) gameMap->shuffleBoxes();
             QGraphicsTextItem* feedback = scene->addText("Shuffle!");
             feedback->setDefaultTextColor(Qt::blue);
@@ -452,7 +470,8 @@ void MainWindow::handleActivation(Box* box, Character* sender)
             });
             break;
         }
-        case 3: {
+        case 3: // hint，逻辑在powerupmanger中实现
+        {
             if (powerUpManager) powerUpManager->activateHint();
             QGraphicsTextItem* feedback = scene->addText("Hint!");
             feedback->setDefaultTextColor(Qt::yellow);

@@ -4,6 +4,7 @@
 #include <QRandomGenerator>
 #include <QGraphicsDropShadowEffect>
 
+// 构造，传入位置、贴图路径、所要添加的scene
 Box::Box(const QPointF &pos, const QString &imagePath, QGraphicsScene *scene)
 {
     setupSprite(imagePath);
@@ -22,6 +23,7 @@ Box::Box(const QPointF &pos, const QString &imagePath, QGraphicsScene *scene)
     scene->addItem(this);
 }
 
+// 重载构造：使用委托构造函数
 Box::Box(const QString &imagePath, QGraphicsScene *scene, const QPointF& characterPos):
     Box(generateRandomPosition(scene->sceneRect(), characterPos), imagePath, scene)// 委托构造：调用上面的第一个构造函数
 {
@@ -38,6 +40,7 @@ QPointF Box::generateRandomPosition(const QRectF &sceneRect,const QPointF &chara
     return QPointF(boxPos);
 }
 
+// 设置spritesheet，传入图片地址和切割大小
 void Box::setupSprite(const QPixmap &imagePath, int frameSize){
     // 精灵图参数：recipe
     // const int cols = 10;   // 横向10个小图
@@ -63,6 +66,7 @@ void Box::setupSprite(const QPixmap &imagePath, int frameSize){
 
 }
 
+// 预选效果
 void Box::preAct() {
     // 如果已有遮罩则先删除
     if (m_overlay) delete m_overlay;
@@ -75,9 +79,10 @@ void Box::preAct() {
 
 }
 
+// 取消预选
 void Box::npreAct() {
     if (m_overlay) {
-        // 保险起见先从父子关系里摘掉（不是必须，但能少点脏区关联）
+        // 保险起见先从父子关系里摘掉
         m_overlay->setParentItem(nullptr);
         delete m_overlay;
         m_overlay = nullptr;
@@ -93,7 +98,7 @@ void Box::npreAct() {
     }
 }
 
-
+// 默认颜色的激活效果
 void Box::activate(){
     this->setScale(2);
     auto* glow = new QGraphicsDropShadowEffect;
@@ -102,6 +107,18 @@ void Box::activate(){
     glow->setOffset(0);             // 居中发光
     this->setGraphicsEffect(glow);  // 应用特效
 }
+
+// 重载，传入颜色的激活效果
+void Box::activate(int colour){
+    this->setScale(2);
+    auto* glow = new QGraphicsDropShadowEffect;
+    glow->setColor(colour);    // 自定义发光颜色
+    glow->setBlurRadius(20);        // 光晕大小
+    glow->setOffset(0);             // 居中发光
+    this->setGraphicsEffect(glow);  // 应用特效
+}
+
+// 取消激活
 void Box::deactivate(){
     this->setScale(1.5);
     // 移除发光效果

@@ -31,6 +31,7 @@ public:
 private slots:
     void onHintTimeout();
     void updateHintPair();
+    void toggleHintBlink();
 
 private:
     Map* gameMap = nullptr;
@@ -41,6 +42,9 @@ private:
     QTimer* hintUpdateTimer = nullptr;
     QPair<Box*, Box*> currentHintPair;
     bool isHintActive = false;
+    QTimer* hintBlinkTimer = nullptr;  // 闪烁定时器
+    bool isHintBlinking = false;       // 闪烁状态标志
+    int blinkCount = 0;                // 闪烁计数
 
     // 道具精灵图相关
     QString powerUpSpriteSheetPath = ":/assets/powerups.png";

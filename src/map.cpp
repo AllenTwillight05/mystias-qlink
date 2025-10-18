@@ -326,6 +326,7 @@ bool Map::isSolvable()
     return false;
 }
 
+// 道具具体实现：shuffle
 void Map::shuffleBoxes()
 {
     if (m_boxes.isEmpty()) return;
@@ -355,10 +356,10 @@ void Map::shuffleBoxes()
     }
 
     // 3. 随机打乱类型和位置
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(boxTypes.begin(), boxTypes.end(), g);
-    std::shuffle(availablePositions.begin(), availablePositions.end(), g);
+    std::random_device rd;  // 真随机数生成器
+    std::mt19937 g(rd());   // 梅森旋转伪随机数生成器，并用真随机数初始化
+    std::shuffle(boxTypes.begin(), boxTypes.end(), g);  // 打乱方块类型数组，让不同类型的方块随机分布
+    std::shuffle(availablePositions.begin(), availablePositions.end(), g);  // 打乱可用位置数组，让方块的摆放位置随机化
 
     // 4. 更新地图数据和方块位置
     // 先清空地图（保留道具位置）

@@ -11,12 +11,18 @@ PowerUpManager::PowerUpManager(QObject* parent)
     : QObject(parent)
 {
     // 初始化Hint相关计时器
+    // hint效果倒计时
     hintTimer = new QTimer(this);
     hintTimer->setSingleShot(true);
     connect(hintTimer, &QTimer::timeout, this, &PowerUpManager::onHintTimeout);
 
+    // 刷新Hint对
     hintUpdateTimer = new QTimer(this);
     connect(hintUpdateTimer, &QTimer::timeout, this, &PowerUpManager::updateHintPair);
+
+    // 闪烁定时器
+    hintBlinkTimer = new QTimer(this);
+    connect(hintBlinkTimer, &QTimer::timeout, this, &PowerUpManager::toggleHintBlink);
 }
 
 // 析构函数，取消hint的10s效果，其余析构交给父类mainWindow对象
@@ -97,22 +103,6 @@ void PowerUpManager::spawnPowerUp(int powerUpType)
         return;
     }
 
-    // 根据道具类型选择贴图
-    // QString imagePath;
-    // switch (powerUpType) {
-    // case 1: // +1s道具
-    //     imagePath = ":/assets/time.png";
-    //     break;
-    // case 2: // shuffle
-    //     imagePath = ":/assets/wellington.png";
-    //     break;
-    // case 3: // hint道具
-    //     imagePath = ":/assets/hint.png"; // 你需要准备一个Hint道具的图片
-    //     break;
-    // default:
-    //     return; // 未知类型不生成
-    // }
-
     // 创建道具盒子
     Box* powerUpBox = new Box(gameMap->cellCenterPx(r, c), "", gameScene);  // Box初始化的图片传入是QString类型地址，无法直接传QPixmap powerUpSprite
     powerUpBox->setPixmap(powerUpSprite);
@@ -179,12 +169,17 @@ void PowerUpManager::activateHint()
     if (isHintActive) return;
 
     isHintActive = true;
+    isHintBlinking = true;  // 开始闪烁
+    blinkCount = 0;         // 重置闪烁计数
 
     // 开始10秒倒计时
     hintTimer->start(10000);
 
     // 每0.5秒检查一次是否需要更新Hint对（当当前对已被消除时）
     hintUpdateTimer->start(500);
+
+    // 开始闪烁（0.5s间隔）
+    hintBlinkTimer->start(500);
 
     // 显示第一对Hint
     updateHintPair();
@@ -198,6 +193,7 @@ void PowerUpManager::deactivateHint()
     isHintActive = false;
     hintTimer->stop();
     hintUpdateTimer->stop();
+    hintBlinkTimer->stop();
 
     // 取消当前高亮
     if (currentHintPair.first && currentHintPair.second) {
@@ -216,12 +212,44 @@ void PowerUpManager::onHintTimeout()
     deactivateHint();
 }
 
-// 更新Hint对
+// 闪烁切换函数
+void PowerUpManager::toggleHintBlink()
+{
+    if (!isHintActive || !isHintBlinking) return;
+
+    // 如果当前Hint对不存在或无效，尝试更新
+    if (!currentHintPair.first || !currentHintPair.second ||
+        !currentHintPair.first->scene() || !currentHintPair.second->scene()) {
+        updateHintPair();
+        return;
+    }
+
+    blinkCount++;
+
+    // 切换激活/取消激活状态
+    if (blinkCount % 2 == 1) {
+        // 奇数次闪烁：激活状态（黄色）
+        currentHintPair.first->activate();
+        currentHintPair.second->activate();
+    } else {
+        // 偶数次闪烁：取消激活状态
+        currentHintPair.first->deactivate();
+        currentHintPair.second->deactivate();
+    }
+
+    // 限制最大闪烁次数，避免无限闪烁
+    // if (blinkCount >= 6) { // 3秒后停止闪烁（* 500ms）
+    //     isHintBlinking = false;
+    //     hintBlinkTimer->stop();
+    // }
+}
+
+// 更新提示box
 void PowerUpManager::updateHintPair()
 {
     if (!isHintActive) return;
 
-    // 如果当前Hint对仍然有效且存在，保持高亮
+    // 如果当前Hint对仍然有效且存在，保持（闪烁会处理状态切换）
     if (currentHintPair.first && currentHintPair.second &&
         currentHintPair.first->scene() && currentHintPair.second->scene() &&
         gameMap->canConnect(currentHintPair.first, currentHintPair.second)) {
@@ -238,12 +266,11 @@ void PowerUpManager::updateHintPair()
     currentHintPair = getHintPair();
 
     if (currentHintPair.first && currentHintPair.second) {
-        // 高亮显示这对方块
+        // 重置闪烁状态，确保新的一对从激活状态开始闪烁
+        blinkCount = 0;
+        // 立即激活新的一对（闪烁定时器会在500ms后切换状态）
         currentHintPair.first->activate();
         currentHintPair.second->activate();
-
-        // 可以添加特殊的高亮效果，比如不同的颜色
-        // 这里使用默认的activate效果，你也可以自定义
     } else {
         qDebug() << "No connectable pair found for hint";
     }

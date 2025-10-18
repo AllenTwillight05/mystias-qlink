@@ -19,6 +19,7 @@ public:
     Character* preSelectedBy = nullptr;
 
     void activate();
+    void activate(int colour);
     void deactivate();
     void preAct();
     void npreAct();

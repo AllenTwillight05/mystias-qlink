@@ -6,6 +6,7 @@
 #include <QDataStream>
 #include <QMessageBox>
 
+// 构造函数
 SaveGameManager::SaveGameManager(QObject* parent) : QObject(parent) {}
 
 // 存档逻辑，传入存档文件名、地图指针、角色列表、剩余时间，存储成功则返回true
@@ -22,6 +23,8 @@ bool SaveGameManager::saveGame(const QString &filename,
 
     // 结构体，包含二维int数组mapData（序号+空）、QPointF数组characterPositions、分数数组scores和剩余时间countdownTime
     GameSaveData saveData;
+    saveData.mapRows = gameMap.getRowCount();
+    saveData.mapCols = gameMap.getColCount();
     saveData.mapData = gameMap.getMapData();
 
     // 保存所有角色的位置和分数
@@ -83,6 +86,19 @@ bool SaveGameManager::loadGame(const QString &filename,
     in >> saveData;
 
     file.close();
+
+    // 检查地图大小是否匹配
+    if (gameMap.getRowCount() != saveData.mapRows ||
+        gameMap.getColCount() != saveData.mapCols) {
+        emit errorOccurred(
+            tr("存档地图大小不匹配！\n\n当前地图：%1×%2\n存档地图：%3×%4\n\n请选择相同地图大小的游戏模式。")
+                .arg(gameMap.getRowCount())
+                .arg(gameMap.getColCount())
+                .arg(saveData.mapRows)
+                .arg(saveData.mapCols)
+            );
+        return false;
+    }
 
     // 检查角色数量是否匹配
     if (characters.size() != saveData.characterPositions.size()) {
