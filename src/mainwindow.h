@@ -59,6 +59,7 @@ private:
     // 地图与网格
     const qreal mapWidth = 800;
     const qreal mapHeight = 600;
+    const QPointF mapPixSize = QPointF(mapWidth, mapHeight);
     int yNum = 4, xNum = 6, typeNum = 4;
     Map* gameMap = nullptr;
 

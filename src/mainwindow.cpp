@@ -152,7 +152,7 @@ void MainWindow::startGame(int playerCount)
     // 创建角色 - 确保完全清理旧角色
     characters.clear();
     if (playerCount >= 1) {
-        Character* character1 = new Character(":/assets/sprites0.png", this);
+        Character* character1 = new Character(":/assets/sprites0.png", mapPixSize, this);
         character1->setPos(mapWidth/5, mapHeight/5);
         character1->setControls({ Qt::Key_W, Qt::Key_S, Qt::Key_A, Qt::Key_D });
         character1->setGameMap(gameMap);
@@ -162,7 +162,7 @@ void MainWindow::startGame(int playerCount)
         qDebug() << "Created player 1";
     }
     if (playerCount >= 2) {
-        Character* character2 = new Character(":/assets/sprites1.png", this);
+        Character* character2 = new Character(":/assets/sprites1.png", mapPixSize, this);
         character2->setPos(mapWidth/5*4, mapHeight/5*4);
         character2->setControls({ Qt::Key_Up, Qt::Key_Down, Qt::Key_Left, Qt::Key_Right });
         character2->setGameMap(gameMap);
@@ -224,6 +224,7 @@ void MainWindow::cleanupGameResources()
         powerUpSpawnTimer->stop();
         disconnect(powerUpSpawnTimer, nullptr, this, nullptr);
         powerUpSpawnTimer->deleteLater();
+        // deleteLater() 是 QObject 的一个槽函数，它不会立即删除对象，而是将删除请求放入事件循环，在下次事件处理时安全地删除对象。
         powerUpSpawnTimer = nullptr;
     }
 
@@ -334,11 +335,10 @@ void MainWindow::resetToTitleScreen()
 }
 
 
-/* ---------------------- 输入事件转发 ---------------------- */
-/* ---------------------- 安全的输入事件处理 ---------------------- */
+// 按键处理（QKeyEvent::KeyPress即处理按下）
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    // 添加焦点设置
+    // 添加焦点设置，确保双人模式下Up,Down等方向键正常工作
     if (!hasFocus()) {
         setFocus();
     }

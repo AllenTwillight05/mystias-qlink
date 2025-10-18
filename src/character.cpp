@@ -4,16 +4,19 @@
 #include "score.h"
 #include "collision.h"
 #include "powerupmanager.h"
+#include "mainwindow.h"
 
 #include <cmath>
 #include <limits>
 
-Character::Character(const QString& spritePath, QObject* parent)
+// 构造函数，传入未裁切的spritesheet的文件路径
+Character::Character(const QString& spritePath, const QPointF& mapPixSize, QObject* parent)
     : QObject(parent), QGraphicsPixmapItem(),
     isPaused(false), isMoving(false), currentDirection(0), currentFrame(0),
     movementTimer(new QTimer(this)), // 直接创建
     animationTimer(new QTimer(this)), // 直接创建
     gameMap(nullptr),
+    mapPixSize(mapPixSize),
     characterScore(new Score(this))
 {
     spriteSheet.load(spritePath);
@@ -33,12 +36,9 @@ Character::Character(const QString& spritePath, QObject* parent)
     connect(animationTimer, &QTimer::timeout, this, &Character::updateAnimation);
     animationTimer->start(200);
 
-    characterScore->setPos(-45, -50);       // 位置调整为角色头顶偏移
-    // characterScore->setDefaultTextColor(QColorConstants::Svg::saddlebrown); // 颜色
-    // characterScore->setFont(QFont("Consolas", 16, QFont::Bold));
-    // characterScore->setZValue(150);
+    characterScore->setPos(-45, -50);       // 位置调整为角色头顶偏移，具体由score类管理
 
-    // 坐标小圆点
+    // （debug用）坐标小圆点
     if (debugMarkerEnabled) {
         roleMarker = new QGraphicsEllipseItem(-3, -3, 6, 6, this);
         roleMarker->setBrush(Qt::green);
@@ -49,11 +49,13 @@ Character::Character(const QString& spritePath, QObject* parent)
 
 }
 
+// 析构
 Character::~Character() {
     qDebug() << "Character destructor called - safe mode";
-    // 不进行任何操作，让 Qt 自动管理
+    // Qt 自动管理
 }
 
+// 传入map对象到character成员gamemap
 void Character::setGameMap(Map* map){
     gameMap = map;
     // 如果地图为空，停止移动避免崩溃
@@ -65,6 +67,7 @@ void Character::setGameMap(Map* map){
     }
 }
 
+// 对传入的spritesheet根据当前方向和帧进行裁切
 void Character::updateCharacterSprite() {
     if (spriteSheet.isNull()) return;
 
@@ -76,6 +79,7 @@ void Character::updateCharacterSprite() {
     setPixmap(spriteSheet.copy(sourceRect));
 }
 
+// 开始运动，传入int类方向0-3代表上左右下
 void Character::startMoving(int direction) {
     currentDirection = direction;
     isMoving = true;
@@ -88,6 +92,7 @@ void Character::startMoving(int direction) {
     }
 }
 
+// 停止运动
 void Character::stopMoving() {
     isMoving = false;
     moveDirection = QPointF(0, 0);
@@ -95,10 +100,11 @@ void Character::stopMoving() {
     updateCharacterSprite();
 }
 
+// 更新运动状态，30帧，movementTimer的slot
 void Character::updateMovement() {
     if (!isMoving || isPaused || !gameMap) return; // 检查 gameMap 是否存在
 
-    characterScore->setZValue(150);
+    // characterScore->setZValue(150);
 
     QPointF newPos = pos() + moveDirection * moveSpeed;
     bool willCollide = false;
@@ -129,7 +135,7 @@ void Character::updateMovement() {
             setZValue(pos().y() > ( nearestBox->pos().y() - gameMap->getSpacing() / 2 ) ? 2 : 0);
         }
 
-        // 最近 Box 高亮
+        // 最近 Box 高亮与黑色遮罩，每个效果各自记录对应的 character 对象，故而双人模式下消除逻辑不会影响另一个 character
         for (Box* box : gameMap->m_boxes) {
             if (box == nearestBox && nearestDist < frameWidth * 0.75){
                 box->preSelectedBy = this;
@@ -146,7 +152,7 @@ void Character::updateMovement() {
         for (Box* box : gameMap->m_tools){
             // 碰撞检测
             if (Collision::willCollide(pos(), moveDirection, moveSpeed, box, box->boxSize)) {
-                //willCollide = true;
+                // willCollide = true;
                 emit collidedWithBox(box, this);    // 声明事件发生,通知 MainWindow
                 break;
             }
@@ -160,18 +166,21 @@ void Character::updateMovement() {
         newPos = pos();
     }
 
-    // 边界循环（写死 800x600，可改成参数传入）
-    qreal x = std::fmod(newPos.x(), 800.0);
-    qreal y = std::fmod(newPos.y(), 600.0);
-    if (x < 0) x += 800;
-    if (y < 0) y += 600;
+    // 边界循环
+    qreal x = std::fmod(newPos.x(), mapPixSize.x());
+    qreal y = std::fmod(newPos.y(), mapPixSize.y());
+    if (x < 0) x += mapPixSize.x();
+    if (y < 0) y += mapPixSize.y();
     setPos(x, y);
 }
 
+// 更新动画，5帧，animationTimer的slot，实现01020102...走路动画
 void Character::updateAnimation() {
     if (!isMoving || isPaused) return;;
 
     static bool nextIsTwo = false;
+    // 静态局部变量只在第一次进入函数时初始化
+
     switch (currentFrame) {
     case 0:
         currentFrame = nextIsTwo ? 2 : 1;
@@ -189,9 +198,11 @@ void Character::updateAnimation() {
 }
 
 // 处理按下按键后运动方向和起步动画帧
+// 在MainWindow::keyPressEvent(QKeyEvent *event)中调用
 // 上下左右键对应int值通过void setControls()赋给每个character对象
 void Character::handleKeyPress(QKeyEvent* event) {
     if (event->isAutoRepeat()) return;
+    // 长按处理
 
     if (event->key() == controls.upKey) startMoving(3);
     else if (event->key() == controls.leftKey) startMoving(1);
@@ -205,6 +216,7 @@ void Character::handleKeyPress(QKeyEvent* event) {
 }
 
 // 处理松开按键后停止
+// 在MainWindow::keyReleaseEvent(QKeyEvent *event)中调用
 void Character::handleKeyRelease(QKeyEvent* event) {
     if (event->isAutoRepeat()) return;
 

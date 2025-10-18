@@ -25,7 +25,7 @@ class Character : public QObject, public QGraphicsPixmapItem
     Q_OBJECT
 
 public:
-    Character(const QString& spritePath, QObject* parent = nullptr);
+    Character(const QString& spritePath, const QPointF& mapPixSize, QObject* parent = nullptr);
     ~Character();
 
     void setControls(const ControlScheme& scheme) { controls = scheme; }
@@ -76,6 +76,7 @@ private:
 
     // 地图引用（用于碰撞检测）
     Map* gameMap = nullptr;
+    QPointF mapPixSize;
 
     // 分数对象指针
     Score* characterScore;

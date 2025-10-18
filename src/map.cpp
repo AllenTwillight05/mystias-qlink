@@ -160,7 +160,7 @@ void Map::setMapData(const QVector<QVector<int>>& newMapData)
 
 
 // 路径判定
-
+// 直线连接，传入两点和padding后的地图矩阵，以及此时为空的路径数组（存储路径结点）
 bool Map::straightConnect(int r1, int c1, int r2, int c2,
                           const QVector<QVector<int>>& grid,
                           QVector<QPoint>& outPath) const
@@ -211,9 +211,10 @@ bool Map::twoTurnConnect(int r1, int c1, int r2, int c2,
                          QVector<QPoint>& outPath) const
 {
     // 从起点沿四个方向延伸
-    for (int c = c1 - 1; c >= 0; --c) { //向左
+    for (int c = c1 - 1; c >= 0; --c) { // 向左
         if (grid[r1][c] != -1) break;
-        QVector<QPoint> tmp;    //此处tmp有用，因为第一个拐点已经记录并作为起点传入，故而tmp记录第一、二个拐点和终点
+        QVector<QPoint> tmp;
+        // 第一个拐点已经记录并作为起点传入oneTurnConnect()，故而tmp记录第一、二个拐点和终点
         if (oneTurnConnect(r1, c, r2, c2, grid, tmp)) {
             outPath << QPoint(c1, r1) << tmp;   //先传入起点，随后传入tmp
             return true;
@@ -281,7 +282,7 @@ bool Map::canConnect(Box* a, Box* b)
     return false;
 }
 
-// 工具函数：padding
+// 工具函数：padding，传入需要padding的矩阵
 void Map::padding(QVector<QVector<int>> &grid)
 {
     for (int i = 0; i < m_rows; i++)
@@ -289,7 +290,7 @@ void Map::padding(QVector<QVector<int>> &grid)
             grid[i+1][j+1] = m_map[i][j];
 }
 
-// 直接遍历 m_boxes，按 type 聚合 Box*存储在红黑树typeGroups中，然后两两调用 canConnect
+// 直接遍历 m_boxes，按 type 聚合 Box*存储在键值对typeGroups中，然后两两调用 canConnect
 bool Map::isSolvable()
 {
     //键值对，eg.:{1: [(0,0), (1,1)], 2: [(2,2)]}
