@@ -464,7 +464,7 @@ void MainWindow::handleToolActivation(Box* box, Character* sender)
 
 void MainWindow::handleAddTimeTool(Character* sender)
 {
-    addCountdownTime(30);
+    addCountdownTime(10);
     showFeedbackText("+1s", Qt::green, sender->getPosition());
 }
 
@@ -499,6 +499,7 @@ void MainWindow::showFeedbackText(const QString& text, const QColor& color, cons
     });
 }
 
+// 箱子消除管理
 void MainWindow::handleBoxConnection(Box* box, Character* sender)
 {
     Box* lastBox = sender->getLastActivatedBox();
@@ -526,6 +527,7 @@ void MainWindow::handleBoxConnection(Box* box, Character* sender)
     }
 }
 
+// 可以消除
 void MainWindow::handleSuccessfulConnection(Box* box1, Box* box2, Character* sender)
 {
     // 移除方块状态
@@ -552,6 +554,7 @@ void MainWindow::handleSuccessfulConnection(Box* box1, Box* box2, Character* sen
     showConnectionPath();
 }
 
+// 不能消除
 void MainWindow::handleFailedConnection(Box* lastBox, Box* newBox, Character* sender)
 {
     lastBox->deactivate();
@@ -559,6 +562,7 @@ void MainWindow::handleFailedConnection(Box* lastBox, Box* newBox, Character* se
     newBox->activate();
 }
 
+// 绘制连线
 void MainWindow::showConnectionPath()
 {
     const QVector<QPointF>& pts = gameMap->m_pathPixels;
@@ -686,7 +690,7 @@ void MainWindow::showGameOverDialog()
 {
     qDebug() << "=== Starting showGameOverDialog ===";
 
-    // 1. 先停止所有活动，但不要立即清理
+    // 1. 先停止所有活动
     isPaused = true;
 
     if (countdownTimer) {
@@ -699,10 +703,55 @@ void MainWindow::showGameOverDialog()
         disconnect(powerUpSpawnTimer, nullptr, this, nullptr);
     }
 
-    // 2. 显示游戏结束对话框
-    QMessageBox::information(this, "Game Over", "采集完毕~\n今天也是干劲十足");
+    // 2. 根据游戏模式准备不同的消息
+    QString gameOverMessage;
 
-    // 3. 使用单次定时器延迟重置，确保当前调用栈完成
+    if (characters.size() == 1) {
+        // 单人模式：显示最终分数
+        int finalScore = characters[0]->getCharacterScore()->getScore();
+        int usedTime = (initialCountdownTime - countdownTime) > 0 ? (initialCountdownTime - countdownTime) : 1;
+        qreal speed = std::round(static_cast<double>(finalScore) / usedTime * 100.0) / 100.0;
+        gameOverMessage = QString("采集完毕~\n\n"
+                                  "最终用时：%1 秒\n"
+                                  "最终得分：%2 分\n"
+                                  "效率：%3").arg(usedTime)
+                                .arg(finalScore).arg(speed);
+    }
+    else if (characters.size() >= 2) {
+        // 双人模式：比较分数并宣布赢家
+        int score1 = characters[0]->getCharacterScore()->getScore();
+        int score2 = characters[1]->getCharacterScore()->getScore();
+        int usedTime = (initialCountdownTime - countdownTime) > 0 ? (initialCountdownTime - countdownTime) : 1;
+        qreal speed1 = std::round(static_cast<double>(score1) / usedTime * 100.0) / 100.0;
+        qreal speed2 = std::round(static_cast<double>(score2) / usedTime * 100.0) / 100.0;
+
+        QString winnerInfo;
+        if (score1 > score2) {
+            winnerInfo = "玩家1 获胜！";
+        } else if (score2 > score1) {
+            winnerInfo = "玩家2 获胜！";
+        } else {
+            winnerInfo = "平局！双方都很棒！";
+        }
+
+        gameOverMessage = QString("采集完毕~\n\n"
+                                  "用时：%1 秒\n"
+                                  "玩家1：%2 分    效率：%3\n"
+                                  "玩家2：%4 分    效率：%5\n\n"
+                                  "%6").arg(usedTime)
+                                .arg(score1).arg(speed1)
+                                .arg(score2).arg(speed2)
+                                .arg(winnerInfo);
+    }
+    else {
+        // 没有角色的情况（理论上不会发生）
+        gameOverMessage = "采集完毕~\n今天也是干劲十足";
+    }
+
+    // 3. 显示游戏结束对话框
+    QMessageBox::information(this, "Game Over", gameOverMessage);
+
+    // 4. 使用单次定时器延迟重置，确保当前调用栈完成
     QTimer::singleShot(100, this, [this]() {
         qDebug() << "Delayed reset to title screen";
         resetToTitleScreen();

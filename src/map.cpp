@@ -56,7 +56,7 @@ QPointF Map::cellCenterPx(int r, int c) const {
 
     return QPointF(offsetX + c * spacing, offsetY + r * spacing);
 }
-//  网格转化为像素坐标
+// 工具函数：网格转化为像素坐标
 QVector<QPointF> Map::cellsToScene(const QVector<QPoint>& cells) const {
     QVector<QPointF> result;
     result.reserve(cells.size());   //预先分配内存，避免频繁的重新分配和拷贝

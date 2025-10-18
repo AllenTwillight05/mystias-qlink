@@ -105,7 +105,7 @@ void StartMenu::onConfigClicked()
 
     // 设置类型数
     int typeNum = QInputDialog::getInt(this, tr("配置"),
-                                       tr("食材类型数:"), m_typeNum, 2, 8, 1, &ok);
+                                       tr("食材类型数:"), m_typeNum, 3, 10, 1, &ok);
     if (!ok) return;
 
     int initialCountdownTime = QInputDialog::getInt(this, tr("配置"),
