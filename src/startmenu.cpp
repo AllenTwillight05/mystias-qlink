@@ -40,13 +40,13 @@ StartMenu::StartMenu(QWidget *parent)
 
     // 创建垂直布局放置按钮
     QVBoxLayout *buttonLayout = new QVBoxLayout();
-    buttonLayout->addStretch();
+    buttonLayout->addStretch(2);
     buttonLayout->addWidget(singleBtn, 0, Qt::AlignLeft);  // 左对齐
     buttonLayout->addSpacing(24);
     buttonLayout->addWidget(multiBtn, 0, Qt::AlignLeft);
     buttonLayout->addSpacing(24);
     buttonLayout->addWidget(configBtn, 0, Qt::AlignLeft);
-    buttonLayout->addStretch();
+    buttonLayout->addStretch(1);
     buttonLayout->setContentsMargins(60, 40, 60, 60);
 
 
