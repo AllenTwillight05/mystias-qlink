@@ -15,6 +15,7 @@ public:
     int getYNum() const { return m_yNum; }
     int getXNum() const { return m_xNum; }
     int getTypeNum() const { return m_typeNum; }
+    int getInitialCountdownTime() const { return m_initialCountdownTime; }
 
 signals:
     void startSinglePlayer();
@@ -38,4 +39,5 @@ private:
     int m_yNum = 4;
     int m_xNum = 6;
     int m_typeNum = 4;
+    int m_initialCountdownTime = 120;
 };

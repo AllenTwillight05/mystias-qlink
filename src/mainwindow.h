@@ -46,6 +46,21 @@ private:
     void resetToTitleScreen();
     void showGameOverDialog();
 
+    // 道具处理函数
+    void handleToolActivation(Box* box, Character* sender);
+    void handleAddTimeTool(Character* sender);
+    void handleShuffleTool( Character* sender);
+    void handleHintTool(Character* sender);
+
+    // 方块连接处理函数
+    void handleBoxConnection(Box* box, Character* sender);
+    void handleSuccessfulConnection(Box* box1, Box* box2, Character* sender);
+    void handleFailedConnection(Box* lastBox, Box* newBox, Character* sender);
+
+    // 通用辅助函数
+    void showFeedbackText(const QString& text, const QColor& color, const QPointF& position);
+    void showConnectionPath();
+
 private:
     // 主菜单（作为 MainWindow 的子控件并一直保留）
     StartMenu* startMenu;

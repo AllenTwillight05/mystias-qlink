@@ -15,7 +15,7 @@ StartMenu::StartMenu(QWidget *parent)
     backgroundLabel(new QLabel(this)),
     singleBtn(new QPushButton(tr("独自采集"), this)),
     multiBtn(new QPushButton(tr("招募伙伴"), this)),
-    configBtn(new QPushButton(tr("食材配置"), this)),
+    configBtn(new QPushButton(tr("采集配置"), this)),
     bgPixmap(":/assets/start_menu_bg.png")
 {
     // 背景 label 在底层
@@ -108,6 +108,10 @@ void StartMenu::onConfigClicked()
                                        tr("食材类型数:"), m_typeNum, 2, 8, 1, &ok);
     if (!ok) return;
 
+    int initialCountdownTime = QInputDialog::getInt(this, tr("配置"),
+                                       tr("倒计时(s):"), m_initialCountdownTime, 30, 300, 10, &ok);
+    if (!ok) return;
+
     // 验证参数合理性（行数×列数应该是偶数，因为连连看需要成对消除）
     if ((yNum * xNum) % 2 != 0) {
         QMessageBox::warning(this, tr("配置错误"),
@@ -126,10 +130,11 @@ void StartMenu::onConfigClicked()
     m_yNum = yNum;
     m_xNum = xNum;
     m_typeNum = typeNum;
+    m_initialCountdownTime = initialCountdownTime;
 
     QMessageBox::information(this, tr("配置成功"),
-                             tr("地图配置已更新:\n行数: %1\n列数: %2\n类型数: %3")
-                                 .arg(m_yNum).arg(m_xNum).arg(m_typeNum));
+                             tr("地图配置已更新:\n行数: %1\n列数: %2\n类型数: %3\n倒计时: %4")
+                                 .arg(m_yNum).arg(m_xNum).arg(m_typeNum).arg(m_initialCountdownTime));
 
     // 发射配置请求信号（如果需要通知MainWindow）
     emit configRequested();

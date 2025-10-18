@@ -135,7 +135,9 @@ void MainWindow::startGame(int playerCount)
         yNum = startMenu->getYNum();
         xNum = startMenu->getXNum();
         typeNum = startMenu->getTypeNum();
-        qDebug() << "Using config - yNum:" << yNum << "xNum:" << xNum << "typeNum:" << typeNum;
+        initialCountdownTime = startMenu->getInitialCountdownTime();
+        qDebug() << "Using config - yNum:" << yNum << "xNum:" << xNum
+                 << "typeNum:" << typeNum << "initialCountdownTime" << initialCountdownTime;
     }
 
     // 新建 scene 和 view
@@ -437,118 +439,155 @@ void MainWindow::handleActivation(Box* box, Character* sender)
 
     // 道具类型处理
     if (box->toolType >= 1) {
-        switch (box->toolType) {
-        case 1: // +1s，逻辑完全在mainwindow中实现
-        {
-            addCountdownTime(30);
-            QGraphicsTextItem* feedback = scene->addText("+1s");
-            feedback->setDefaultTextColor(Qt::green);
-            feedback->setFont(QFont("Consolas", 16, QFont::Bold));
-            feedback->setZValue(100);
-            feedback->setPos(sender->getPosition());
-            QTimer::singleShot(1000, [feedback]() {
-                if (feedback->scene()) {
-                    feedback->scene()->removeItem(feedback);
-                    delete feedback;
-                }
-            });
-            break;
-        }
-        case 2: // shuffle，逻辑在powerupmanger中实现
-        {
-            if (gameMap) gameMap->shuffleBoxes();
-            QGraphicsTextItem* feedback = scene->addText("Shuffle!");
-            feedback->setDefaultTextColor(Qt::blue);
-            feedback->setFont(QFont("Consolas", 16, QFont::Bold));
-            feedback->setZValue(100);
-            feedback->setPos(sender->getPosition());
-            QTimer::singleShot(1000, [feedback]() {
-                if (feedback->scene()) {
-                    feedback->scene()->removeItem(feedback);
-                    delete feedback;
-                }
-            });
-            break;
-        }
-        case 3: // hint，逻辑在powerupmanger中实现
-        {
-            if (powerUpManager) powerUpManager->activateHint();
-            QGraphicsTextItem* feedback = scene->addText("Hint!");
-            feedback->setDefaultTextColor(Qt::yellow);
-            feedback->setFont(QFont("Consolas", 16, QFont::Bold));
-            feedback->setZValue(100);
-            feedback->setPos(sender->getPosition());
-            QTimer::singleShot(1000, [feedback]() {
-                if (feedback->scene()) {
-                    feedback->scene()->removeItem(feedback);
-                    delete feedback;
-                }
-            });
-            break;
-        }
-        }
-
-        if (gameMap) gameMap->m_tools.removeOne(box);
-        if (scene) scene->removeItem(box);
-        delete box;
+        handleToolActivation(box, sender);
         return;
     }
 
-
     // 消除逻辑
-    // 获取角色自己的 lastActivatedBox
+    handleBoxConnection(box, sender);
+}
+
+// 道具碰撞后管理
+void MainWindow::handleToolActivation(Box* box, Character* sender)
+{
+    switch (box->toolType) {
+    case 1: handleAddTimeTool(sender); break;
+    case 2: handleShuffleTool(sender); break;
+    case 3: handleHintTool(sender); break;
+    }
+
+    // 清理道具
+    if (gameMap) gameMap->m_tools.removeOne(box);
+    if (scene) scene->removeItem(box);
+    delete box;
+}
+
+void MainWindow::handleAddTimeTool(Character* sender)
+{
+    addCountdownTime(30);
+    showFeedbackText("+1s", Qt::green, sender->getPosition());
+}
+
+void MainWindow::handleShuffleTool(Character* sender)
+{
+    if (gameMap) gameMap->shuffleBoxes();
+    showFeedbackText("Shuffle!", Qt::blue, sender->getPosition());
+}
+
+void MainWindow::handleHintTool(Character* sender)
+{
+    if (powerUpManager) powerUpManager->activateHint();
+    showFeedbackText("Hint!", Qt::yellow, sender->getPosition());
+}
+
+// 道具激活后反馈效果
+void MainWindow::showFeedbackText(const QString& text, const QColor& color, const QPointF& position)
+{
+    if (!scene) return;
+
+    QGraphicsTextItem* feedback = scene->addText(text);
+    feedback->setDefaultTextColor(color);
+    feedback->setFont(QFont("Consolas", 16, QFont::Bold));
+    feedback->setZValue(100);
+    feedback->setPos(position);
+
+    QTimer::singleShot(1000, [feedback]() {
+        if (feedback->scene()) {
+            feedback->scene()->removeItem(feedback);
+            delete feedback;
+        }
+    });
+}
+
+void MainWindow::handleBoxConnection(Box* box, Character* sender)
+{
     Box* lastBox = sender->getLastActivatedBox();
 
+    // 首次激活方块
     if (!lastBox) {
         sender->setLastActivatedBox(box);
         box->activate();
         return;
     }
 
+    // 重复点击相同方块
     if (box == lastBox) return;
 
+    // 尝试连接方块
     if (gameMap->canConnect(lastBox, box)) {
-        lastBox->deactivate();
-        box->deactivate();
-        gameMap->m_map[lastBox->row][lastBox->col] = -1;
-        gameMap->m_map[box->row][box->col] = -1;
-        scene->removeItem(lastBox);
-        scene->removeItem(box);
-        gameMap->m_boxes.removeOne(lastBox);
-        gameMap->m_boxes.removeOne(box);
-        sender->setLastActivatedBox(nullptr);
-
-        sender->getCharacterScore()->increase(10);
-
-        const QVector<QPointF>& pts = gameMap->m_pathPixels;
-        if (pts.size() >= 2 && scene) {
-            QPainterPath path(pts[0]);
-            for (int i = 1; i < pts.size(); ++i) path.lineTo(pts[i]);
-            QPen pen(QColor(155, 123, 128), 10);
-            pen.setJoinStyle(Qt::RoundJoin);
-            pen.setCapStyle(Qt::RoundCap);
-
-            QGraphicsPathItem* lineItem = scene->addPath(path, pen);
-            lineItem->setZValue(-1);
-            currentPathItem = lineItem;
-
-            QTimer::singleShot(500, [this, lineItem]() {
-                if (lineItem && lineItem->scene()) {
-                    lineItem->scene()->removeItem(lineItem);
-                    delete lineItem;
-                    if (currentPathItem == lineItem) currentPathItem = nullptr;
-                }
-            });
-        }
+        handleSuccessfulConnection(lastBox, box, sender);
     } else {
-        lastBox->deactivate();
-        sender->setLastActivatedBox(box);
-        box->activate();
+        handleFailedConnection(lastBox, box, sender);
     }
 
+    // 检查游戏是否可解
     if (gameMap && !gameMap->isSolvable()) {
         showGameOverDialog();
     }
+}
+
+void MainWindow::handleSuccessfulConnection(Box* box1, Box* box2, Character* sender)
+{
+    // 移除方块状态
+    box1->deactivate();
+    box2->deactivate();
+
+    // 更新游戏数据
+    gameMap->m_map[box1->row][box1->col] = -1;
+    gameMap->m_map[box2->row][box2->col] = -1;
+
+    // 移除场景对象
+    scene->removeItem(box1);
+    scene->removeItem(box2);
+
+    // 清理数据
+    gameMap->m_boxes.removeOne(box1);
+    gameMap->m_boxes.removeOne(box2);
+    sender->setLastActivatedBox(nullptr);
+
+    // 增加分数
+    sender->getCharacterScore()->increase(10);
+
+    // 显示连接路径
+    showConnectionPath();
+}
+
+void MainWindow::handleFailedConnection(Box* lastBox, Box* newBox, Character* sender)
+{
+    lastBox->deactivate();
+    sender->setLastActivatedBox(newBox);
+    newBox->activate();
+}
+
+void MainWindow::showConnectionPath()
+{
+    const QVector<QPointF>& pts = gameMap->m_pathPixels;
+    if (pts.size() < 2 || !scene) return;
+
+    // 创建路径
+    QPainterPath path(pts[0]);
+    for (int i = 1; i < pts.size(); ++i)
+        path.lineTo(pts[i]);
+
+    // 设置画笔样式
+    QPen pen(QColor(155, 123, 128), 10);
+    pen.setJoinStyle(Qt::RoundJoin);
+    pen.setCapStyle(Qt::RoundCap);
+
+    // 添加到场景
+    QGraphicsPathItem* lineItem = scene->addPath(path, pen);
+    lineItem->setZValue(-1);
+    currentPathItem = lineItem;
+
+    // 设置定时移除
+    QTimer::singleShot(500, [this, lineItem]() {
+        if (lineItem && lineItem->scene()) {
+            lineItem->scene()->removeItem(lineItem);
+            delete lineItem;
+            if (currentPathItem == lineItem)
+                currentPathItem = nullptr;
+        }
+    });
 }
 
 // 游戏界面顶部menubar，通过connect实现逻辑功能
