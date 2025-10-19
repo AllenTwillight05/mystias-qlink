@@ -339,8 +339,13 @@ void MainWindow::resetToTitleScreen()
 
     // 创建新的开始菜单
     startMenu = new StartMenu(this);
+    // 重新连接所有信号
     connect(startMenu, &StartMenu::startSinglePlayer, this, [this]() { startGame(1); });
     connect(startMenu, &StartMenu::startMultiPlayer, this, [this]() { startGame(2); });
+    connect(startMenu, &StartMenu::configRequested, this, [this]() {
+        QMessageBox::information(this, tr("配置已更新"),
+                                 tr("新的配置将在下次游戏开始时生效"));
+    });
 
     setCentralWidget(startMenu);
 

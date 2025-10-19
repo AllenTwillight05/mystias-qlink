@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QTimer>
 
 // 构造函数
 StartMenu::StartMenu(QWidget *parent)
@@ -137,5 +138,9 @@ void StartMenu::onConfigClicked()
                                  .arg(m_yNum).arg(m_xNum).arg(m_typeNum).arg(m_initialCountdownTime));
 
     // 发射配置请求信号（如果需要通知MainWindow）
-    emit configRequested();
+    // 延迟发射信号，确保当前对话框完全关闭
+    QTimer::singleShot(100, this, [this]() {
+        emit configRequested();
+    });
+
 }
