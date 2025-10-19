@@ -154,6 +154,8 @@ void Map::setMapData(const QVector<QVector<int>>& newMapData)
         return;
     }
 
+    qDebug() << "Ready to apply addToScene().";
+
     // 根据新的地图数据重新初始化箱子
     addToScene();
 }

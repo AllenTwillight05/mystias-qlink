@@ -1,5 +1,5 @@
-QT       += core widgets testlib
-CONFIG   += c++17 console
+QT       += core widgets testlib gui
+CONFIG   += c++17 console testcase
 
 INCLUDEPATH += ../../src
 

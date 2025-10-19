@@ -15,4 +15,10 @@ private slots:
     void testPointCollision();
     //void testCheckCollision();//弃用
     void testWillCollide();
+
+    void testStraightConnect();
+    void testOneTurnConnect();
+    void testTwoTurnConnect();
+    void testCannotConnect();
+    void testComplexCase();
 };

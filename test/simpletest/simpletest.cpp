@@ -1,5 +1,7 @@
 #include "simpletest.h"
+#include "box.h"
 #include "collision.h"
+#include "map.h"
 #include <QGraphicsRectItem>
 #include <QDebug>
 
@@ -143,4 +145,158 @@ void SimpleTest::testWillCollide()
 
     delete obstacle;
     qDebug() << "willCollide tests passed!";
+}
+
+
+void SimpleTest::testStraightConnect()
+{
+    qDebug() << "Testing straight connection...";
+
+    // 创建虚拟地图矩阵 (3x3)
+    // -1 表示空格，其他数字表示箱子类型
+    QVector<QVector<int>> testMap = {
+        { 2, -1,  2},  // 第0行：类型2，空格，类型2
+        {-1, -1, -1},
+        {-1, -1, -1}
+    };
+
+    // qDebug() << "Testmap built.";
+
+    // 创建临时 Map 对象进行测试
+    QGraphicsScene* scene = new QGraphicsScene();
+
+    // qDebug() << " scene initialized.";
+
+    Map map(3, 3, 2, ":/assets/ingredient.png", scene, 26);
+
+    // qDebug() << " map initialized.";
+
+    map.setMapData(testMap);
+
+    // qDebug() << "setMapData.";
+
+    // 获取两个应该能直线连接的箱子
+    Box* box1 = nullptr;
+    Box* box2 = nullptr;
+    for (Box* box : map.m_boxes) {
+        if (box->row == 0 && box->col == 0) box1 = box;
+        if (box->row == 0 && box->col == 2) box2 = box;
+    }
+
+    QVERIFY(box1 != nullptr && box2 != nullptr);
+    QVERIFY(map.canConnect(box1, box2));
+
+    delete scene;
+    qDebug() << "Straight connection test passed!";
+}
+
+void SimpleTest::testOneTurnConnect()
+{
+    qDebug() << "Testing one-turn connection...";
+
+    // 测试一拐连接
+    QVector<QVector<int>> testMap = {
+        { 1,  2, -1},
+        {-1,  2, -1},
+        {-1,  1, -1}
+    };
+
+    QGraphicsScene* scene = new QGraphicsScene();
+    Map map(3, 3, 2, ":/assets/ingredient.png", scene, 26);
+    map.setMapData(testMap);
+
+    Box* box1 = nullptr;
+    Box* box2 = nullptr;
+    for (Box* box : map.m_boxes) {
+        if (box->row == 0 && box->col == 0) box1 = box;
+        if (box->row == 2 && box->col == 1) box2 = box;
+    }
+
+    QVERIFY(box1 != nullptr && box2 != nullptr);
+    QVERIFY(map.canConnect(box1, box2));
+
+    delete scene;
+    qDebug() << "One-turn connection test passed!";
+}
+
+void SimpleTest::testTwoTurnConnect()
+{
+    qDebug() << "Testing two-turn connection...";
+
+    // 测试两拐连接
+    QVector<QVector<int>> testMap = {
+        { 2,  1,  1},
+        {-1, -1, -1},
+        { 1,  1,  2}
+    };
+
+    QGraphicsScene* scene = new QGraphicsScene();
+    Map map(3, 3, 2, ":/assets/ingredient.png", scene, 26);
+    map.setMapData(testMap);
+
+    Box* box1 = nullptr;
+    Box* box2 = nullptr;
+    for (Box* box : map.m_boxes) {
+        if (box->row == 0 && box->col == 0) box1 = box;
+        if (box->row == 2 && box->col == 2) box2 = box;
+    }
+
+    QVERIFY(box1 != nullptr && box2 != nullptr);
+    QVERIFY(map.canConnect(box1, box2));
+
+    delete scene;
+    qDebug() << "Two-turn connection test passed!";
+}
+
+void SimpleTest::testCannotConnect()
+{
+    qDebug() << "Testing cannot connect case...";
+
+    // 测试不能连接的情况
+    QVector<QVector<int>> testMap = {
+        {-1, 1, 1},
+        { 2, 1, 2},
+        {-1, 1, 1}
+    };
+
+    QGraphicsScene* scene = new QGraphicsScene();
+    Map map(3, 3, 2, ":/assets/ingredient.png", scene, 26);
+    map.setMapData(testMap);
+
+    Box* box1 = nullptr;
+    Box* box2 = nullptr;
+    for (Box* box : map.m_boxes) {
+        if (box->row == 1 && box->col == 0) box1 = box;
+        if (box->row == 1 && box->col == 2) box2 = box;
+    }
+
+    QVERIFY(box1 != nullptr && box2 != nullptr);
+    QVERIFY(!map.canConnect(box1, box2)); // 应该不能连接
+
+    delete scene;
+    qDebug() << "Cannot connect test passed!";
+}
+
+void SimpleTest::testComplexCase()
+{
+    qDebug() << "Testing complex case...";
+
+    // 更复杂的测试用例
+    QVector<QVector<int>> testMap = {
+        {1, -1, 2, 3},
+        {-1, 2, 3, -1},
+        {2, 3, -1, 1},
+        {3, -1, 1, 2}
+    };
+
+    QGraphicsScene* scene = new QGraphicsScene();
+    Map map(4, 4, 3, ":/assets/ingredient.png", scene, 26);
+    map.setMapData(testMap);
+
+    // 测试多个可能的连接
+    bool foundSolvable = map.isSolvable();
+    QVERIFY(foundSolvable); // 应该至少有一对可连接
+
+    delete scene;
+    qDebug() << "Complex case test passed!";
 }

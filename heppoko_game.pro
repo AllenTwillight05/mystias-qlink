@@ -8,25 +8,7 @@ CONFIG += c++17
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-# SOURCES += \
-#     main.cpp \
-#     mainwindow.cpp \
-#     src/Player.cpp \
-#     src/Box.cpp \
-#     src/Map.cpp
-
-# HEADERS += \
-#     mainwindow.h \
-#     src/Player.h \
-#     src/Box.h \
-#     src/Map.h
-
-
-# FORMS += \
-#     mainwindow.ui
-
-# RESOURCES += \
-#     resources/resources.qrc
+TARGET = mystias-qlink
 
 SOURCES += main.cpp \
            src/mainwindow.cpp \
